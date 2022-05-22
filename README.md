@@ -1,35 +1,33 @@
 # Name
-OSCam.Maintainer
+CCCamScraper
 
 ## Description
-This package will scrap websites for C lines and parse them to your oscam.server  
-This was only tested on an rpi4 with libreelec 9.2
+CCCamScraper will scrap websites for C lines and parse them to your oscam.server  
+Relies on AngleSharp and on Quartz
+It was only tested as a docker image deployed on docker > 20 on RPI4 with OSMC
 
 ## Install instructions
- * Install .Net Core on your rpi4  
- * Activate 'Cron' on your rpi4  
- * Copy the files on the release to /storage/.kodi/userdata/addon_data/tools.dotnet-runtime/oscammaintainer  
- * Edit appsettings.json and configure URL's  
+ * An image for RPI4 OSMC (debian buster 32bit) exists at https://hub.docker.com/r/chapas/cccamscraper
+ * Add a cron job to restart OsCam to reload readers, ie: 51 23 * * * docker restart oscam 
+ * oscam.server needs to be on a volume
 
-### Run it manually:
-~/.kodi/addons/tools.dotnet-runtime/bin/dotnet ~/.kodi/userdata/addon_data/tools.dotnet-runtime/oscammaintainer/OSCam.Maintainer.dll  
+ ### Run image with
+ docker run -d \
+--name=cccamscraper \
+-e PUID=1000 \
+-e PGID=1000 \
+-e TZ=Europe/London \
+-v "$(pwd)/oscam/config/oscam/:/app/config/" \
+--restart unless-stopped \
+chapas/cccamscraper:armv7
 
 ### Schedule it with 'Cron':
-crontab -e  
-(Paste)  
-50 23 * * * ~/.kodi/addons/tools.dotnet-runtime/bin/dotnet ~/.kodi/userdata/addon_data/tools.dotnet-runtime/oscammaintainer/OSCam.Maintainer.dll  
-51 23 * * * killall -9 oscam  
-Save and exit  
-crontab -l (just to make sure)  
-Wait for 23:51 and 'systemctl status cron' to check output  
+crontab -e
+(Paste at the end)
+51 23 * * * docker restart oscam
+Save and exit
+crontab -l (just to make sure)
 
 ### Todo
- * Refactor for better code  
- * Create an API to add reader  
-
-### Hints
-File Location on rpi  
-/storage/.kodi/userdata/addon_data/tools.dotnet-runtime/oscammaintainer  
-/storage/.kodi/userdata/addon_data/service.softcam.oscam/config  
-
-http://www.faalsoft.com/knowledgebase/448/oscamserver.html  
+ * Dinamically add pages to scrape from
+ * Include xPath for scraper to use
