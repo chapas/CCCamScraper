@@ -18,7 +18,6 @@ namespace CCCamScraper
 
         public static void Main(string[] args)
         {
-
             var services = new ServiceCollection();
 
             try
@@ -29,7 +28,7 @@ namespace CCCamScraper
 
                 _configuration = new ConfigurationBuilder()
                     .SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile(path: "appsettings.json", optional: false, reloadOnChange: true)
+                    .AddJsonFile("appsettings.json", false, true)
                     .AddEnvironmentVariables()
                     .Build();
 
@@ -57,36 +56,37 @@ namespace CCCamScraper
             }
         }
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-           Host.CreateDefaultBuilder(args)
-               .UseSerilog()
+        public static IHostBuilder CreateHostBuilder(string[] args)
+        {
+            return Host.CreateDefaultBuilder(args)
+                .UseSerilog()
+                .ConfigureServices((hostContext, services) =>
+                {
+                    services.AddSingleton(_ =>
+                    {
+                        var scraperOptions = new CCCamScraperOptions();
+                        _configuration.GetSection("OsCam").Bind(scraperOptions);
 
-               .ConfigureServices((hostContext, services) =>
-               {
-                   services.AddSingleton(_ =>
-                   {
-                       CCCamScraperOptions scraperOptions = new CCCamScraperOptions();
-                       _configuration.GetSection("OsCam").Bind(scraperOptions);
+                        return scraperOptions;
+                    });
+                    services.AddSingleton(_ =>
+                    {
+                        var quartzJobsOptions = new QuartzJobsOptions();
+                        _configuration.GetSection("QuartzJobs").Bind(quartzJobsOptions);
 
-                       return scraperOptions;
-                   });
-                   services.AddSingleton(_ =>
-                   {
-                       QuartzJobsOptions quartzJobsOptions = new QuartzJobsOptions();
-                       _configuration.GetSection("QuartzJobs").Bind(quartzJobsOptions);
+                        return quartzJobsOptions;
+                    });
+                    services.AddQuartz(q =>
+                    {
+                        q.UseMicrosoftDependencyInjectionJobFactory();
 
-                       return quartzJobsOptions;
-                   });
-                   services.AddQuartz(q =>
-                   {
-                       q.UseMicrosoftDependencyInjectionJobFactory();
+                        // Register the job, loading the schedule from configuration
+                        q.AddQuartzJobsAndTriggers<ScrapeJob>(_configuration);
+                    });
 
-                       // Register the job, loading the schedule from configuration
-                       q.AddQuartzJobsAndTriggers<ScrapeJob>(_configuration);
-                   });
-
-                   services.AddQuartzHostedService(options => { options.WaitForJobsToComplete = true; });
-                   services.AddQuartzServer(options => { options.WaitForJobsToComplete = true; });
-               });
+                    services.AddQuartzHostedService(options => { options.WaitForJobsToComplete = true; });
+                    services.AddQuartzServer(options => { options.WaitForJobsToComplete = true; });
+                });
+        }
     }
 }

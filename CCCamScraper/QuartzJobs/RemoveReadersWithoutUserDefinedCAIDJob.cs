@@ -1,23 +1,23 @@
-﻿using CCCamScraper.Configurations;
+﻿using System.Xml.Serialization;
+using CCCamScraper.Configurations;
+using CCCamScraper.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
 using Serilog;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
-using CCCamScraper.Models;
-using System.Collections.Generic;
-using System.Net.Http;
 using System.IO;
+using System.Net.Http;
 
 namespace CCCamScraper.QuartzJobs
 {
     [DisallowConcurrentExecution]
     public class RemoveReadersWithoutUserDefinedCAIDJob : IJob
     {
-        CCCamScraperJobOption? quartzJobsOption;
-        CCCamScraperOptions cccamScraperOptions;
+        private readonly CCCamScraperOptions cccamScraperOptions;
+        private readonly CCCamScraperJobOption? quartzJobsOption;
 
         public RemoveReadersWithoutUserDefinedCAIDJob(IServiceProvider serviceProvider)
         {
@@ -31,22 +31,29 @@ namespace CCCamScraper.QuartzJobs
             cccamScraperOptions = serviceProvider.GetRequiredService<CCCamScraperOptions>();
             if (cccamScraperOptions == null)
             {
-                Log.Error($"Couldn't find Scraper options");
-                throw new ArgumentNullException($"Couldn't find Scraper options");
+                Log.Error("Couldn't find Scraper options");
+                throw new ArgumentNullException("Couldn't find Scraper options");
             }
         }
 
-        public async Task Execute(IJobExecutionContext context) => await CheckCCCamServerstate().ConfigureAwait(false);
+        public async Task Execute(IJobExecutionContext context)
+        {
+            await CheckCCCamServerstate().ConfigureAwait(false);
+        }
 
         public async Task CheckCCCamServerstate()
         {
             try
             {
-                Log.Information($"Started removing readers from oscam.server file without users CAID's");
+                Log.Information("Started removing readers from oscam.server file without users CAID's");
 
-                var readersFromOscamServer = await ScraperJobOperations.GetListWithCurrentReadersOnOscamServerFile(cccamScraperOptions.OscamServerPath).ConfigureAwait(false);
+                var readersFromOscamServer = await ScraperJobOperations
+                    .GetListWithCurrentReadersOnOscamServerFile(cccamScraperOptions.OscamServerPath)
+                    .ConfigureAwait(false);
 
-                var oscamLinesFromStatusPage = await ScraperJobOperations.GetListWithCurrentServerStatusFromOsCam(cccamScraperOptions.OsCamStatusPageURL).ConfigureAwait(false);
+                var oscamLinesFromStatusPage = await ScraperJobOperations
+                    .GetListWithCurrentServerStatusFromOsCam(cccamScraperOptions.OsCamStatusPageURL)
+                    .ConfigureAwait(false);
 
                 if (oscamLinesFromStatusPage.Count == 0)
                 {
@@ -54,9 +61,13 @@ namespace CCCamScraper.QuartzJobs
                     return;
                 }
 
-                readersFromOscamServer = await RemoveReadersThatDontHaveTheCAID(readersFromOscamServer, oscamLinesFromStatusPage, cccamScraperOptions).ConfigureAwait(false);
+                readersFromOscamServer =
+                    await RemoveReadersThatDontHaveTheCAID(readersFromOscamServer, oscamLinesFromStatusPage,
+                        cccamScraperOptions).ConfigureAwait(false);
 
-                ScraperJobOperations.WriteOsCamReadersToFile(readersFromOscamServer, cccamScraperOptions.OscamServerPath); // + DateTime.Now.ToShortTimeString().Replace(":","") + ".txt");
+                ScraperJobOperations.WriteOsCamReadersToFile(readersFromOscamServer,
+                    cccamScraperOptions
+                        .OscamServerPath); // + DateTime.Now.ToShortTimeString().Replace(":","") + ".txt");
             }
             catch (Exception ex)
             {
@@ -70,7 +81,10 @@ namespace CCCamScraper.QuartzJobs
 
             foreach (var osCAMReader in currentListOfCcCamReadersFromFile)
             {
-                var readerHasCaidFromUserAllowedCaids = await HasTheReaderAUserDefinedCaid(scraperOptions.OsCamReaderAPIURL + @"?part=entitlement&label=" + osCAMReader.Label, scraperOptions.CAIDs).ConfigureAwait(false);
+                var readerHasCaidFromUserAllowedCaids =
+                    await HasTheReaderAUserDefinedCaid(
+                        scraperOptions.OsCamReaderAPIURL + @"?part=entitlement&label=" + osCAMReader.Label,
+                        scraperOptions.CAIDs).ConfigureAwait(false);
                 ///Let's look for the CAID and if it's there we don't do anything
 
                 if (readerHasCaidFromUserAllowedCaids)
@@ -93,7 +107,7 @@ namespace CCCamScraper.QuartzJobs
         {
             try
             {
-                XmlSerializer serializer = new XmlSerializer(typeof(oscam));
+                var serializer = new XmlSerializer(typeof(oscam));
                 using (var httpClient = new HttpClient())
                 {
                     httpClient.BaseAddress = new Uri(osCamReaderPageUrl);
@@ -105,26 +119,25 @@ namespace CCCamScraper.QuartzJobs
                     response.EnsureSuccessStatusCode();
 
                     if (response.IsSuccessStatusCode)
-                    {
                         using (var reader = new StringReader(await response.Content.ReadAsStringAsync().ConfigureAwait(false)))
                         {
                             var test = (oscam)serializer.Deserialize(reader);
 
                             var totalCardCount = test.reader?.Select(oscamReader => oscamReader)
-                                                     .FirstOrDefault()
-                                                     ?.cardlist.FirstOrDefault()
-                                                     ?.totalcards;
+                                .FirstOrDefault()
+                                ?.cardlist.FirstOrDefault()
+                                ?.totalcards;
 
                             if (totalCardCount == null || int.Parse(totalCardCount) == 0)
                                 return false;
 
                             if (caiDs.Any())
-                                foreach (string caid in caiDs)
+                                foreach (var caid in caiDs)
                                 {
                                     var hasCaid = (test.reader.Select(oscamReader => oscamReader)
-                                                       .FirstOrDefault()?
-                                                       .cardlist.FirstOrDefault()?
-                                                       .card)
+                                            .FirstOrDefault()?
+                                            .cardlist.FirstOrDefault()?
+                                            .card)
                                         .FirstOrDefault(card => card.caid.Contains(caid));
 
                                     if (hasCaid != null)
@@ -135,7 +148,6 @@ namespace CCCamScraper.QuartzJobs
 
                             return false;
                         }
-                    }
 
                     Log.Error($"Didn't had access to the oscam reader details page: {osCamReaderPageUrl}");
                 }

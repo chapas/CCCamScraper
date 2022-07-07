@@ -25,7 +25,7 @@ namespace CCCamScraper.Models
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
 
             sb.AppendLine(Reader);
             sb.AppendLine("label                    = " + Label);
@@ -41,7 +41,7 @@ namespace CCCamScraper.Models
             sb.AppendLine("group                    = " + Group);
             sb.AppendLine("inactivitytimeout        = " + Inactivitytimeout);
             sb.AppendLine("reconnecttimeout         = " + Reconnecttimeout);
-            sb.AppendLine("lb_weight                = " + LbWeight); 
+            sb.AppendLine("lb_weight                = " + LbWeight);
             sb.AppendLine("cccversion               = " + Cccversion);
             sb.AppendLine("cccmaxhops               = " + Cccmaxhops);
             if (!string.IsNullOrEmpty(Cccwantemu))

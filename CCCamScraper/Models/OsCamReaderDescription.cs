@@ -1,59 +1,58 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 
 namespace CCCamScraper.Models
 {
     public class OsCamReaderDescription
     {
-        int Error { get; set; }
-        int Off { get; set; }
-        int Unknown { get; set; }
-        int LbValueReader { get; set; }
-        public string Username { get; set; } = "";
-
         public OsCamReaderDescription(string description)
         {
-            var statusArray = description.Split(';', StringSplitOptions.None);
+            var statusArray = description.Split(';');
 
             if (statusArray.Length != 5)
-                statusArray = new[] {"0", "0", "0", "0", "0"}; //don't care whats on description field, gets 0;0;0;0
+                statusArray = new[] { "0", "0", "0", "0", "0" }; //don't care whats on description field, gets 0;0;0;0
 
-                Error = int.Parse(statusArray[0]);
-                Off = int.Parse(statusArray[1]);
-                Unknown = int.Parse(statusArray[2]);
-                LbValueReader = int.Parse(statusArray[3]);
-                Username =  string.IsNullOrEmpty(statusArray[4]) ? "" : statusArray[4];
+            Error = int.Parse(statusArray[0]);
+            Off = int.Parse(statusArray[1]);
+            Unknown = int.Parse(statusArray[2]);
+            LbValueReader = int.Parse(statusArray[3]);
+            Username = string.IsNullOrEmpty(statusArray[4]) ? "" : statusArray[4];
         }
+
+        private int Error { get; set; }
+        private int Off { get; set; }
+        private int Unknown { get; set; }
+        private int LbValueReader { get; set; }
+        public string Username { get; set; } = "";
 
         public void UpdateDescriptionWithNewData(string newFoundState)
         {
             switch (newFoundState.ToLower())
             {
                 case "off":
-                    this.Off += 1;
+                    Off += 1;
                     break;
                 case "unknown":
-                    this.Unknown += 1;
+                    Unknown += 1;
                     break;
                 case "error":
-                    this.Error += 1;
+                    Error += 1;
                     break;
                 case "lbvaluereader":
-                    this.LbValueReader += 1;
+                    LbValueReader += 1;
                     break;
                 default:
                     //connected to server, so reset fail counters
-                    this.Off = 0;
-                    this.Unknown = 0;
-                    this.Error = 0;
-                    this.LbValueReader = 0;
+                    Off = 0;
+                    Unknown = 0;
+                    Error = 0;
+                    LbValueReader = 0;
                     break;
             }
         }
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
 
             sb.Append(Error.ToString());
             sb.Append(";");
@@ -63,7 +62,7 @@ namespace CCCamScraper.Models
             sb.Append(";");
             sb.Append(LbValueReader.ToString());
             sb.Append(";");
-            sb.Append(Username.ToString());
+            sb.Append(Username);
 
             return sb.ToString();
         }

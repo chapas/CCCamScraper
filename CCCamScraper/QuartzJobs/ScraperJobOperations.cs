@@ -1,19 +1,17 @@
-﻿using AngleSharp;
-using AngleSharp.Dom;
-using AngleSharp.Io;
-using CCCamScraper.Configurations;
-using CCCamScraper.Models;
-using Serilog;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
+using AngleSharp;
+using AngleSharp.Html.Dom;
+using AngleSharp.Io;
+using CCCamScraper.Configurations;
+using CCCamScraper.Models;
+using Serilog;
 
 namespace CCCamScraper.QuartzJobs
 {
@@ -21,14 +19,14 @@ namespace CCCamScraper.QuartzJobs
     {
         public static List<OsCamReader> ParseCLines(List<string> cLines, string url)
         {
-            List<CcCamLine> cccamLines = new List<CcCamLine>();
+            var cccamLines = new List<CcCamLine>();
 
             cccamLines.AddRange(cLines.Select(ParseCLine));
 
-            List<OsCamReader> readers = new List<OsCamReader>();
+            var readers = new List<OsCamReader>();
 
             readers.AddRange(cccamLines.Where(cl => cl != null)
-                .Select(cl => new OsCamReader()
+                .Select(cl => new OsCamReader
                 {
                     Device = cl.Hostname,
                     Port = cl.Port,
@@ -47,16 +45,17 @@ namespace CCCamScraper.QuartzJobs
 
         private static CcCamLine ParseCLine(string cline)
         {
-            if (!cline.ToString().StartsWith(@"C:"))
+            if (!cline.StartsWith(@"C:"))
                 return null;
 
-            CcCamLine line = new CcCamLine();
+            var line = new CcCamLine();
 
             if (cline.LastIndexOf('#') != -1)
             {
-                int lastIndexOfCardinal = cline.LastIndexOf('#');
+                var lastIndexOfCardinal = cline.LastIndexOf('#');
 
-                var c = cline.Substring(lastIndexOfCardinal + 1, cline.Length - lastIndexOfCardinal - 1).Trim().Replace("v", "");
+                var c = cline.Substring(lastIndexOfCardinal + 1, cline.Length - lastIndexOfCardinal - 1).Trim()
+                    .Replace("v", "");
                 line.Cccversion = c.Remove(c.IndexOf("-"), c.Length - c.IndexOf("-"));
 
                 cline = cline.Substring(0, cline.IndexOf("#") - 1).Trim();
@@ -79,32 +78,42 @@ namespace CCCamScraper.QuartzJobs
             return line;
         }
 
-        public static async Task<List<OscamUiStatusLine>> GetListWithCurrentServerStatusFromOsCam(string osCamStatusPageUrl)
+        public static async Task<List<OscamUiStatusLine>> GetListWithCurrentServerStatusFromOsCam(
+            string osCamStatusPageUrl)
         {
             //We need to add the browser headers
-            DefaultHttpRequester req = new DefaultHttpRequester();
-            req.Headers["User-Agent"] = @"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0";
+            var req = new DefaultHttpRequester();
+            req.Headers["User-Agent"] =
+                @"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0";
 
             // Load default configuration
-            var config = Configuration.Default.With(req).WithDefaultLoader().WithDefaultCookies();       // Create a new browsing context
-            var context = BrowsingContext.New(config);                            // This is where the HTTP request happens, returns <IDocument> that // we can query later
-            IDocument document = context.OpenAsync(osCamStatusPageUrl).Result;    // Log the data to the console
-                                                                                  //var asdf = document.DocumentElement.OuterHtml;
-                                                                                  // var docu = document.
+            var config = Configuration.Default.With(req).WithDefaultLoader()
+                .WithDefaultCookies(); // Create a new browsing context
+            var context =
+                BrowsingContext
+                    .New(config); // This is where the HTTP request happens, returns <IDocument> that // we can query later
+            var document = context.OpenAsync(osCamStatusPageUrl).Result; // Log the data to the console
+            //var asdf = document.DocumentElement.OuterHtml;
+            // var docu = document.
 
             var rows = document.QuerySelectorAll("table.status tbody#tbodyp tr");
 
             var oscamUIStatusLine = new List<OscamUiStatusLine>();
 
             oscamUIStatusLine.AddRange(rows.Where(sl => sl != null)
-                           .Select(sl => new OscamUiStatusLine()
-                           {
-                               Description = ((AngleSharp.Html.Dom.IHtmlTableDataCellElement)sl.QuerySelectorAll("td.statuscol4").FirstOrDefault())?.Title?.Substring(((AngleSharp.Html.Dom.IHtmlTableDataCellElement)sl.QuerySelectorAll("td.statuscol4").FirstOrDefault()).Title.LastIndexOf('\r') + 2)?.TrimEnd(')'),
-                               ReaderUser = sl.QuerySelectorAll("td.statuscol4").Select(tg => tg.TextContent).FirstOrDefault()?.Trim(),
-                               Port = sl.QuerySelectorAll("td.statuscol8").Select(tg => tg.TextContent).FirstOrDefault()?.Trim(),
-                               LbValueReader = sl.QuerySelectorAll("td.statuscol14").Select(tg => tg.TextContent).FirstOrDefault()?.Trim(),
-                               Status = sl.QuerySelectorAll("td.statuscol16").Select(tg => tg.TextContent).FirstOrDefault()?.Trim()
-                           }));
+                .Select(sl => new OscamUiStatusLine
+                {
+                    Description = ((IHtmlTableDataCellElement)sl.QuerySelectorAll("td.statuscol4").FirstOrDefault())
+                        ?.Title?.Substring(
+                            ((IHtmlTableDataCellElement)sl.QuerySelectorAll("td.statuscol4").FirstOrDefault()).Title
+                            .LastIndexOf('\r') + 2)?.TrimEnd(')'),
+                    ReaderUser = sl.QuerySelectorAll("td.statuscol4").Select(tg => tg.TextContent).FirstOrDefault()
+                        ?.Trim(),
+                    Port = sl.QuerySelectorAll("td.statuscol8").Select(tg => tg.TextContent).FirstOrDefault()?.Trim(),
+                    LbValueReader = sl.QuerySelectorAll("td.statuscol14").Select(tg => tg.TextContent).FirstOrDefault()
+                        ?.Trim(),
+                    Status = sl.QuerySelectorAll("td.statuscol16").Select(tg => tg.TextContent).FirstOrDefault()?.Trim()
+                }));
 
             oscamUIStatusLine.RemoveAll(line => line.ReaderUser == null || line.Port == null || line.Status == null);
 
@@ -114,14 +123,14 @@ namespace CCCamScraper.QuartzJobs
         public static Task<List<OsCamReader>> GetListWithCurrentReadersOnOscamServerFile(string oscamServerFilepath)
         {
             var lista = new List<OsCamReader>();
-            OsCamReader reader = new OsCamReader();
-            int counter = 0;
+            var reader = new OsCamReader();
+            var counter = 0;
 
             try
             {
-                using (StreamReader sr = new StreamReader(oscamServerFilepath))
+                using (var sr = new StreamReader(oscamServerFilepath))
                 {
-                    foreach (string linha in File.ReadAllLines(oscamServerFilepath))
+                    foreach (var linha in File.ReadAllLines(oscamServerFilepath))
                     {
                         Debug.WriteLine(linha);
 
@@ -133,70 +142,101 @@ namespace CCCamScraper.QuartzJobs
                         switch (arrayCCCAMLines[0].Trim().ToLower())
                         {
                             case "[reader]":
+                            {
+                                if (!string.IsNullOrEmpty(reader.Label))
                                 {
-                                    if (!string.IsNullOrEmpty(reader.Label))
-                                    {
-                                        lista.Add(reader);
-                                        counter++;
-                                    }
-
-                                    reader = new OsCamReader();
-                                    continue;
+                                    lista.Add(reader);
+                                    counter++;
                                 }
+
+                                reader = new OsCamReader();
+                                continue;
+                            }
                             case "label":
-                                reader.Label = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Label : arrayCCCAMLines[1].Trim();
+                                reader.Label = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Label
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "description":
-                                reader.Description = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Description : arrayCCCAMLines[1].Trim();
+                                reader.Description = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Description
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "enable":
-                                reader.Enable = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Enable : arrayCCCAMLines[1].Trim();
+                                reader.Enable = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Enable
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "protocol":
-                                reader.Protocol = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Protocol : arrayCCCAMLines[1].Trim();
+                                reader.Protocol = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Protocol
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "device":
+                            {
+                                if (!string.IsNullOrEmpty(arrayCCCAMLines[1]))
                                 {
-                                    if (!string.IsNullOrEmpty(arrayCCCAMLines[1]))
-                                    {
-                                        var device = arrayCCCAMLines[1].Split(',');
-                                        reader.Device = string.IsNullOrEmpty(device[0]) ? reader.Device : device[0].Trim();
-                                        reader.Port = string.IsNullOrEmpty(device[1]) ? reader.Port : device[1].Trim();
-                                    }
-                                    continue;
+                                    var device = arrayCCCAMLines[1].Split(',');
+                                    reader.Device = string.IsNullOrEmpty(device[0]) ? reader.Device : device[0].Trim();
+                                    reader.Port = string.IsNullOrEmpty(device[1]) ? reader.Port : device[1].Trim();
                                 }
+
+                                continue;
+                            }
                             case "key":
-                                reader.Key = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Key : arrayCCCAMLines[1].Trim();
+                                reader.Key = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Key
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "user":
-                                reader.User = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.User : arrayCCCAMLines[1].Trim();
+                                reader.User = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.User
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "password":
-                                reader.Password = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Password : arrayCCCAMLines[1].Trim();
+                                reader.Password = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Password
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "inactivitytimeout":
-                                reader.Inactivitytimeout = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Inactivitytimeout : arrayCCCAMLines[1].Trim();
+                                reader.Inactivitytimeout = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Inactivitytimeout
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "group":
-                                reader.Group = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Group : arrayCCCAMLines[1].Trim();
+                                reader.Group = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Group
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "cccversion":
-                                reader.Cccversion = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Cccversion : arrayCCCAMLines[1].Trim();
+                                reader.Cccversion = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Cccversion
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "ccckeepalive":
-                                reader.Ccckeepalive = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Ccckeepalive : arrayCCCAMLines[1].Trim();
+                                reader.Ccckeepalive = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Ccckeepalive
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "reconnecttimeout":
-                                reader.Reconnecttimeout = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Reconnecttimeout : arrayCCCAMLines[1].Trim();
+                                reader.Reconnecttimeout = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Reconnecttimeout
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "lb_weight":
-                                reader.LbWeight = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.LbWeight : arrayCCCAMLines[1].Trim();
+                                reader.LbWeight = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.LbWeight
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "cccmaxhops":
-                                reader.Cccmaxhops = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Cccmaxhops : arrayCCCAMLines[1].Trim();
+                                reader.Cccmaxhops = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Cccmaxhops
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "cccwantemu":
-                                reader.Cccwantemu = string.IsNullOrEmpty(arrayCCCAMLines[1]) ? reader.Cccwantemu : arrayCCCAMLines[1].Trim();
+                                reader.Cccwantemu = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.Cccwantemu
+                                    : arrayCCCAMLines[1].Trim();
                                 continue;
                             default:
                                 Console.WriteLine("Skiped " + linha);
@@ -250,9 +290,9 @@ namespace CCCamScraper.QuartzJobs
         //        if (scraperOptions.UnwantedStatus.Contains(osCAMUIReader.Status))
         //        {
         //            var reader = currentListOfCcCamReadersFromFile.Where(camReader => camReader.Label == osCAMUIReader.ReaderUser);  
-                    
+
         //            readersToRemove.AddRange(reader);
-                    
+
         //            Log.Information(osCAMUIReader.ReaderUser + " with status " + osCAMUIReader.Status + " is flagged to be deleted.");
         //        }
         //    }
@@ -323,7 +363,8 @@ namespace CCCamScraper.QuartzJobs
         //    return false;
         //}
 
-        public static List<OsCamReader> AddNewScrapedReaders(List<OsCamReader> currentServerReaders, List<OsCamReader> newlyScrapedReaders)
+        public static List<OsCamReader> AddNewScrapedReaders(List<OsCamReader> currentServerReaders,
+            List<OsCamReader> newlyScrapedReaders)
         {
             var newReaders = new List<OsCamReader>();
 
@@ -331,15 +372,13 @@ namespace CCCamScraper.QuartzJobs
             {
                 var OnFile = false;
                 foreach (var currentlines in currentServerReaders)
-                {
-                    if (line.Device == currentlines.Device &
-                        line.Port == currentlines.Port &
-                        line.User == currentlines.User)
+                    if ((line.Device == currentlines.Device) &
+                        (line.Port == currentlines.Port) &
+                        (line.User == currentlines.User))
                     {
                         OnFile = true;
                         break;
                     }
-                }
 
                 if (!OnFile)
                     newReaders.Add(line);
@@ -352,7 +391,8 @@ namespace CCCamScraper.QuartzJobs
             return currentServerReaders;
         }
 
-        public static void WriteOsCamReadersToFile(List<OsCamReader> currentServerStatusList, string oscamServerFilepath = @"oscam.server")
+        public static void WriteOsCamReadersToFile(List<OsCamReader> currentServerStatusList,
+            string oscamServerFilepath = @"oscam.server")
         {
             var readers = new List<OsCamReader>();
 
@@ -364,7 +404,7 @@ namespace CCCamScraper.QuartzJobs
                 readers.Add(reader);
             }
 
-            using (StreamWriter sr = new StreamWriter(oscamServerFilepath, false, Encoding.ASCII))
+            using (var sr = new StreamWriter(oscamServerFilepath, false, Encoding.ASCII))
             {
                 foreach (var reader in readers)
                     sr.Write(reader.ToString());
@@ -380,8 +420,9 @@ namespace CCCamScraper.QuartzJobs
             Log.Information($"Started scraping on {urlToScrapeFrom}");
 
             //We need to add the browser headers
-            DefaultHttpRequester req = new DefaultHttpRequester();
-            req.Headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0"; 
+            var req = new DefaultHttpRequester();
+            req.Headers["User-Agent"] =
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0";
 //            req.Headers["authority"] = @"cccamiptv.club";
 //            req.Headers["accept"] = @"text / html, application / xhtml + xml, application / xml; q = 0.9,image / avif,image / webp,image / apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9";
 //req.Headers["accept-language"] = @"en,pt;q=0.9,pt-PT;q=0.8,en-GB;q=0.7,en-US;q=0.6,fr;q=0.5,es;q=0.4";
@@ -402,9 +443,12 @@ namespace CCCamScraper.QuartzJobs
 
 
             // Load default configuration
-            var config = Configuration.Default.With(req).WithDefaultLoader().WithDefaultCookies();  // Create a new browsing context
-            var context = BrowsingContext.New(config);                                                          // This is where the HTTP request happens, returns <IDocument> that // we can query later
-            var document = await context.OpenAsync(urlToScrapeFrom);                                            // Log the data to the console
+            var config = Configuration.Default.With(req).WithDefaultLoader()
+                .WithDefaultCookies(); // Create a new browsing context
+            var context =
+                BrowsingContext
+                    .New(config); // This is where the HTTP request happens, returns <IDocument> that // we can query later
+            var document = await context.OpenAsync(urlToScrapeFrom); // Log the data to the console
 
             //firewall blocking this will yield ZERO lines (damn)
             var lines = document.QuerySelectorAll(quartzJobsOptions!.ScrapePath)
@@ -414,7 +458,7 @@ namespace CCCamScraper.QuartzJobs
                     .Trim()
                     .Split("\n"));
 
-            List<string>? cLines = new List<string>();
+            var cLines = new List<string>();
 
             try
             {
@@ -431,7 +475,7 @@ namespace CCCamScraper.QuartzJobs
                 Log.Error(ex, $"Error getting C lines from {urlToScrapeFrom} <------ Is this a valid URL?");
                 return cLines;
             }
-            
+
             Log.Warning($"Scraped ZERO C lines from {urlToScrapeFrom}");
             return cLines;
         }
@@ -441,9 +485,9 @@ namespace CCCamScraper.QuartzJobs
             if (!(url.Contains('<') & url.Contains('>')))
                 return url;
 
-            string _day = DateTime.Today.Day.ToString("00", CultureInfo.InvariantCulture);
-            string _month = DateTime.Today.Month.ToString("00", CultureInfo.InvariantCulture);
-            string _year = DateTime.Today.Year.ToString("0000", CultureInfo.InvariantCulture);
+            var _day = DateTime.Today.Day.ToString("00", CultureInfo.InvariantCulture);
+            var _month = DateTime.Today.Month.ToString("00", CultureInfo.InvariantCulture);
+            var _year = DateTime.Today.Year.ToString("0000", CultureInfo.InvariantCulture);
 
             url = url.Replace("<yyyy>", _year);
             url = url.Replace("<mm>", _month);

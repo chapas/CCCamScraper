@@ -13,8 +13,8 @@ namespace CCCamScraper.QuartzJobs
     [DisallowConcurrentExecution]
     public class RemoveReadersWithUnwantedStatus : IJob
     {
-        CCCamScraperJobOption? quartzJobsOption;
-        CCCamScraperOptions cccamScraperOptions;
+        private readonly CCCamScraperOptions cccamScraperOptions;
+        private readonly CCCamScraperJobOption? quartzJobsOption;
 
         public RemoveReadersWithUnwantedStatus(IServiceProvider serviceProvider)
         {
@@ -28,22 +28,30 @@ namespace CCCamScraper.QuartzJobs
             cccamScraperOptions = serviceProvider.GetRequiredService<CCCamScraperOptions>();
             if (cccamScraperOptions == null)
             {
-                Log.Error($"Couldn't find Scraper options");
-                throw new ArgumentNullException($"Couldn't find Scraper options");
+                Log.Error("Couldn't find Scraper options");
+                throw new ArgumentNullException("Couldn't find Scraper options");
             }
         }
 
-        public async Task Execute(IJobExecutionContext context) => await CheckCCCamServerstate().ConfigureAwait(false);
+        public async Task Execute(IJobExecutionContext context)
+        {
+            await CheckCCCamServerstate().ConfigureAwait(false);
+        }
 
         public async Task CheckCCCamServerstate()
         {
             try
             {
-                Log.Information($"Started removing readers from oscam.server file with the following status: { string.Join(", ", cccamScraperOptions.UnwantedStatus)}");
+                Log.Information(
+                    $"Started removing readers from oscam.server file with the following status: {string.Join(", ", cccamScraperOptions.UnwantedStatus)}");
 
-                var readersFromOscamServer = await ScraperJobOperations.GetListWithCurrentReadersOnOscamServerFile(cccamScraperOptions.OscamServerPath).ConfigureAwait(false);
+                var readersFromOscamServer = await ScraperJobOperations
+                    .GetListWithCurrentReadersOnOscamServerFile(cccamScraperOptions.OscamServerPath)
+                    .ConfigureAwait(false);
 
-                var oscamLinesFromStatusPage = await ScraperJobOperations.GetListWithCurrentServerStatusFromOsCam(cccamScraperOptions.OsCamStatusPageURL).ConfigureAwait(false);
+                var oscamLinesFromStatusPage = await ScraperJobOperations
+                    .GetListWithCurrentServerStatusFromOsCam(cccamScraperOptions.OsCamStatusPageURL)
+                    .ConfigureAwait(false);
 
                 if (oscamLinesFromStatusPage.Count == 0)
                 {
@@ -51,9 +59,13 @@ namespace CCCamScraper.QuartzJobs
                     return;
                 }
 
-                readersFromOscamServer = await RemoveReadersThatHaveUnwantedStatus(readersFromOscamServer, oscamLinesFromStatusPage, cccamScraperOptions).ConfigureAwait(false);
+                readersFromOscamServer =
+                    await RemoveReadersThatHaveUnwantedStatus(readersFromOscamServer, oscamLinesFromStatusPage,
+                        cccamScraperOptions).ConfigureAwait(false);
 
-                ScraperJobOperations.WriteOsCamReadersToFile(readersFromOscamServer, cccamScraperOptions.OscamServerPath); // + DateTime.Now.ToShortTimeString().Replace(":","") + ".txt");
+                ScraperJobOperations.WriteOsCamReadersToFile(readersFromOscamServer,
+                    cccamScraperOptions
+                        .OscamServerPath); // + DateTime.Now.ToShortTimeString().Replace(":","") + ".txt");
             }
             catch (Exception ex)
             {
@@ -61,21 +73,22 @@ namespace CCCamScraper.QuartzJobs
             }
         }
 
-        public Task<List<OsCamReader>> RemoveReadersThatHaveUnwantedStatus(List<OsCamReader> currentListOfCcCamReadersFromFile, List<OscamUiStatusLine> currentServerStatusList, CCCamScraperOptions scraperOptions)
+        public Task<List<OsCamReader>> RemoveReadersThatHaveUnwantedStatus(
+            List<OsCamReader> currentListOfCcCamReadersFromFile, List<OscamUiStatusLine> currentServerStatusList,
+            CCCamScraperOptions scraperOptions)
         {
             var readersToRemove = new List<OsCamReader>();
 
             foreach (var osCAMUIReader in currentServerStatusList)
-            {
                 if (scraperOptions.UnwantedStatus.Contains(osCAMUIReader.Status))
                 {
                     var reader = currentListOfCcCamReadersFromFile.Where(camReader => camReader.Label == osCAMUIReader.ReaderUser);
 
                     readersToRemove.AddRange(reader);
 
-                    Log.Information(osCAMUIReader.ReaderUser + " with status " + osCAMUIReader.Status + " is flagged to be deleted.");
+                    Log.Information(osCAMUIReader.ReaderUser + " with status " + osCAMUIReader.Status +
+                                    " is flagged to be deleted.");
                 }
-            }
 
             if (readersToRemove.Count > 0)
                 currentListOfCcCamReadersFromFile = currentListOfCcCamReadersFromFile.Except(readersToRemove).ToList();
