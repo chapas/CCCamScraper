@@ -15,7 +15,7 @@ namespace CCCamScraper
     public class Program
     {
         private static IConfigurationRoot _configuration;
-        
+
         public static void Main(string[] args)
         {
 
@@ -60,22 +60,9 @@ namespace CCCamScraper
         public static IHostBuilder CreateHostBuilder(string[] args) =>
            Host.CreateDefaultBuilder(args)
                .UseSerilog()
-    
-               .ConfigureServices((hostContext, services) => {
-                   //services.AddQuartz(q => {
-                   //    q.ScheduleJob<CCCamScraperJob>(CloudWatcherTrigger => CloudWatcherTrigger.WithIdentity("CloudWatcherTrigger", "conditionsTriggers")
-                   //    .StartAt(DateTimeOffset.Now.AddSeconds(10))
-                   //    .WithSimpleSchedule(x => x
-                   //       .WithIntervalInMinutes(1)
-                   //       .RepeatForever())
-                   //    , meteoJob => meteoJob.WithIdentity("CloudWatcherDatas", "conditions"));
-                   //});
-                   ////services.AddQuartz(q => {
-                   ////    q.ScheduleJob<ServiceWebServer>(ServiceWebServerTrigger => ServiceWebServerTrigger.WithIdentity("ServiceWebServer", "webTriggers")
-                   ////    .StartNow()
-                   ////    , WebJob => WebJob.WithIdentity("ServiceWebServer", "Web"));
-                   ////});
-                   
+
+               .ConfigureServices((hostContext, services) =>
+               {
                    services.AddSingleton(_ =>
                    {
                        CCCamScraperOptions scraperOptions = new CCCamScraperOptions();
@@ -83,7 +70,6 @@ namespace CCCamScraper
 
                        return scraperOptions;
                    });
-
                    services.AddSingleton(_ =>
                    {
                        QuartzJobsOptions quartzJobsOptions = new QuartzJobsOptions();
@@ -91,34 +77,16 @@ namespace CCCamScraper
 
                        return quartzJobsOptions;
                    });
-
                    services.AddQuartz(q =>
                    {
                        q.UseMicrosoftDependencyInjectionJobFactory();
 
                        // Register the job, loading the schedule from configuration
-                       q.AddJobAndTrigger<TestiousScraperJob>(_configuration);
-                   });
-
-                   services.AddQuartz(q =>
-                   {
-                       q.UseMicrosoftDependencyInjectionJobFactory();
-
-                       // Register the job, loading the schedule from configuration
-                       q.AddJobAndTrigger<FourCardSharingScraperJob>(_configuration);
-                   });
-
-                   services.AddQuartz(q =>
-                   {
-                       q.UseMicrosoftDependencyInjectionJobFactory();
-
-                       // Register the job, loading the schedule from configuration
-                       q.AddJobAndTrigger<RemoveReadersWithoutUserDefinedCAIDJob>(_configuration);
+                       q.AddQuartzJobsAndTriggers<ScrapeJob>(_configuration);
                    });
 
                    services.AddQuartzHostedService(options => { options.WaitForJobsToComplete = true; });
                    services.AddQuartzServer(options => { options.WaitForJobsToComplete = true; });
                });
-
     }
 }

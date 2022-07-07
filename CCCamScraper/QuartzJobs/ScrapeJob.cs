@@ -1,34 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Threading.Tasks;
-using CCCamScraper.Configurations;
+﻿using CCCamScraper.Configurations;
 using CCCamScraper.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Quartz;
 using Serilog;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace CCCamScraper.QuartzJobs
 {
-    public abstract class ScraperJobBase
+    public class ScrapeJob : IJob
     {
         protected readonly IServiceProvider _serviceProvider;
         internal static ILogger _logger;
+        internal CCCamScraperJobOption quartzJobsOption;
 
-        public ScraperJobBase(IServiceProvider serviceProvider)
+        public ScrapeJob(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
         }
 
-        public async Task CheckCCCamServerstate()
+        public async Task Execute(IJobExecutionContext context) => await CheckCCCamServerstate(context);
+
+        public async Task CheckCCCamServerstate(IJobExecutionContext context)
         {
-            var quartzJobsOption = _serviceProvider.GetRequiredService<QuartzJobsOptions>().CCCamScraperJobs.FirstOrDefault(qjob => qjob.Name == GetType().Name);
+            quartzJobsOption = _serviceProvider.GetRequiredService<QuartzJobsOptions>().CCCamScraperJobs.FirstOrDefault(qjob => qjob.Name == context.JobDetail.Key.Name) ?? throw new InvalidOperationException();
             var cccamScraperOptions = _serviceProvider.GetRequiredService<CCCamScraperOptions>();
             try
             {
                 if (quartzJobsOption != null)
                 {
-                    var scrapedCLinesFromUrl = await ScrapeCLinesFromUrl(quartzJobsOption.URLToScrape).ConfigureAwait(false);
+                    var scrapedCLinesFromUrl = await ScraperJobOperations.ScrapeCLinesFromUrl(quartzJobsOption).ConfigureAwait(false);
                     
                     var parsedCLines = ScraperJobOperations.ParseCLines(scrapedCLinesFromUrl, quartzJobsOption.URLToScrape);
                     
@@ -45,24 +48,6 @@ namespace CCCamScraper.QuartzJobs
             {
                 _logger.Error(ex.Message);
             }
-        }
-
-        public abstract Task<List<string>> ScrapeCLinesFromUrl(string urlToScrapeFrom);
-
-        internal static string UrlStringReplacement(string url)
-        {
-            if (!(url.Contains('<') & url.Contains('>')))
-                return url;
-
-            string _day = DateTime.Today.Day.ToString("00", CultureInfo.InvariantCulture);
-            string _month = DateTime.Today.Month.ToString("00", CultureInfo.InvariantCulture);
-            string _year = DateTime.Today.Year.ToString("0000", CultureInfo.InvariantCulture);
-
-            url = url.Replace("<yyyy>", _year);
-            url = url.Replace("<mm>", _month);
-            url = url.Replace("<dd>", _day);
-
-            return url;
         }
     }
 }

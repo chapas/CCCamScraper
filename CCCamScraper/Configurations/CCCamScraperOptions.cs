@@ -22,14 +22,6 @@
         public int NumberOfBackupsToKeep { get; set; }
 
         /// <summary>
-        /// Gets or sets endpoint to be scrapped
-        /// </summary>
-        /// <value>
-        /// The URL to be scrapped for C lines
-        /// </value>
-        public string URLToScrap { get; set; }
-
-        /// <summary>
         /// Gets or sets OsCam status endpoint
         /// </summary>
         /// <value>
@@ -60,5 +52,21 @@
         /// A list of CAID's that we find on the readers
         /// </value>
         public string[] CAIDs { get; set; }
+
+        /// <summary>
+        /// Gets or sets servers excluded from being deleted
+        /// </summary>
+        /// <value>
+        /// A list of servers excluded we don't want to delete
+        /// </value>
+        public string[] ExcludedFromDeletion { get; set; }
+
+        /// <summary>
+        /// Gets or sets the status of servers that will be  deleted
+        /// </summary>
+        /// <value>
+        /// A list of servers status we will delete
+        /// </value>
+        public string[] UnwantedStatus { get; set; }
     }
 }

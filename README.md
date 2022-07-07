@@ -3,8 +3,8 @@ CCCamScraper
 
 ## Description
 CCCamScraper will scrap websites for C lines and parse them to your oscam.server  
-Relies on AngleSharp and on Quartz
-It was only tested as a docker image deployed on docker > 20 on RPI4 with OSMC
+Relies on AngleSharp and Quartz
+It was only tested as a docker image deployed on docker ver > 20 on RPI4 with OSMC
 
 ## Install instructions
  * An image for RPI4 OSMC (debian buster 32bit) exists at https://hub.docker.com/r/chapas/cccamscraper
@@ -28,6 +28,10 @@ crontab -e
 Save and exit
 crontab -l (just to make sure)
 
+### Job schedule order
+ - Scrape
+ - Restart oscam (to reload readers)(not supported by util, done externaly) 
+ - Remove undesired CAID's (reads from oscam reder details page)
+
 ### Todo
- * Dinamically add pages to scrape from
- * Include xPath for scraper to use
+ - Suggestions

@@ -1,20 +1,21 @@
 ﻿using AngleSharp;
 using AngleSharp.Dom;
+using AngleSharp.Io;
+using CCCamScraper.Configurations;
+using CCCamScraper.Models;
 using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
-using AngleSharp.Io;
-using CCCamScraper.Configurations;
-using CCCamScraper.Models;
 
-namespace CCCamScraper
+namespace CCCamScraper.QuartzJobs
 {
     internal static class ScraperJobOperations
     {
@@ -23,18 +24,6 @@ namespace CCCamScraper
             List<CcCamLine> cccamLines = new List<CcCamLine>();
 
             cccamLines.AddRange(cLines.Select(ParseCLine));
-            
-            //foreach (var cline in cLines)
-            //{
-            //    try
-            //    {
-            //        var parsedLine = ParseCLine(cline);
-            //        cccamlines.Add(parsedLine);
-            //    }
-            //    catch
-            //    {
-            //    }
-            //}
 
             List<OsCamReader> readers = new List<OsCamReader>();
 
@@ -51,7 +40,7 @@ namespace CCCamScraper
                     Description = "0;0;0;0;" + cl.Username
                 }));
 
-            Log.Information($"Parsed { readers.Count } C lines from a total of { cLines.Count } found on { url }");
+            Log.Information($"Parsed {readers.Count} C lines from a total of {cLines.Count} found on {url}");
 
             return readers;
         }
@@ -75,10 +64,10 @@ namespace CCCamScraper
 
             var s = cline.Replace("C:", "").Replace("c:", "").Trim().Split(" ");
 
-                line.Hostname = s[0];
-                line.Port = s[1];
-                line.Username = s[2];
-                line.Password = s[3];
+            line.Hostname = s[0];
+            line.Port = s[1];
+            line.Username = s[2];
+            line.Password = s[3];
 
 
             //try
@@ -218,7 +207,7 @@ namespace CCCamScraper
             }
             catch (Exception ex)
             {
-                Log.Error(ex,"Error while reading from oscam.server file");
+                Log.Error(ex, "Error while reading from oscam.server file");
             }
 
             Log.Information("Got " + lista.Count + " readers from oscam.server file");
@@ -226,88 +215,113 @@ namespace CCCamScraper
             return Task.FromResult(lista);
         }
 
-        public static async Task<List<OsCamReader>> RemoveReadersThatDontHaveTheCAID(List<OsCamReader> currentListOfCcCamReadersFromFile, List<OscamUiStatusLine> currentServerStatusList, CCCamScraperOptions scraperOptions)
-        {
-            var readersToRemove = new List<OsCamReader>();
+        //public static async Task<List<OsCamReader>> RemoveReadersThatDontHaveTheCAID(List<OsCamReader> currentListOfCcCamReadersFromFile, List<OscamUiStatusLine> currentServerStatusList, CCCamScraperOptions scraperOptions)
+        //{
+        //    var readersToRemove = new List<OsCamReader>();
 
-            //NEW VERSION, just deletes reader if CAID is not available
-            foreach (var osCAMReader in currentListOfCcCamReadersFromFile)
-            {
-                var readerHasCaidFromUserAllowedCaids = await HasTheReaderAUserDefinedCaid(scraperOptions.OsCamReaderAPIURL + @"?part=entitlement&label=" + osCAMReader.Label, scraperOptions.CAIDs).ConfigureAwait(false);
-                ///Let's look for the CAID and if it's there we don't do anything
-                
-                if (readerHasCaidFromUserAllowedCaids)
-                    continue;
+        //    //NEW VERSION, just deletes reader if CAID is not available
+        //    foreach (var osCAMReader in currentListOfCcCamReadersFromFile)
+        //    {
+        //        var readerHasCaidFromUserAllowedCaids = await HasTheReaderAUserDefinedCaid(scraperOptions.OsCamReaderAPIURL + @"?part=entitlement&label=" + osCAMReader.Label, scraperOptions.CAIDs).ConfigureAwait(false);
+        //        ///Let's look for the CAID and if it's there we don't do anything
 
-                readersToRemove.Add(osCAMReader);
-                Log.Information(osCAMReader.Label + " does not have a valid CAID and is flagged to be deleted");
-            }
+        //        if (readerHasCaidFromUserAllowedCaids)
+        //            continue;
 
-            if (readersToRemove.Count > 0)
-                currentListOfCcCamReadersFromFile = currentListOfCcCamReadersFromFile.Except(readersToRemove).ToList();
+        //        if(scraperOptions.ExcludedFromDeletion.Contains(osCAMReader.Label))
+        //            continue;
 
-            return currentListOfCcCamReadersFromFile;
-        }
+        //        readersToRemove.Add(osCAMReader);
+        //        Log.Information(osCAMReader.Label + " does not have a valid CAID and is flagged to be deleted");
+        //    }
 
-        private static async Task<bool> HasTheReaderAUserDefinedCaid(string osCamReaderPageUrl, string[] caiDs)
-        {
-            try
-            {
-                XmlSerializer serializer = new XmlSerializer(typeof(oscam));
-                using (var httpClient = new HttpClient())
-                {
-                    httpClient.BaseAddress = new Uri(osCamReaderPageUrl);
-                    httpClient.DefaultRequestHeaders.Accept.Clear();
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", @"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0");
+        //    if (readersToRemove.Count > 0)
+        //        currentListOfCcCamReadersFromFile = currentListOfCcCamReadersFromFile.Except(readersToRemove).ToList();
 
-                    var response = await httpClient.GetAsync(osCamReaderPageUrl).ConfigureAwait(false);
+        //    return currentListOfCcCamReadersFromFile;
+        //}
 
-                    response.EnsureSuccessStatusCode();
+        //public static async Task<List<OsCamReader>> RemoveReadersThatHaveUnwantedStatus(List<OsCamReader> currentListOfCcCamReadersFromFile, List<OscamUiStatusLine> currentServerStatusList, CCCamScraperOptions scraperOptions)
+        //{
+        //    var readersToRemove = new List<OsCamReader>();
 
-                    if (response.IsSuccessStatusCode)
-                    {
-                        using (StringReader reader = new StringReader(await response.Content.ReadAsStringAsync().ConfigureAwait(false)))
-                        {
-                            var test = (oscam)serializer.Deserialize(reader);
+        //    foreach (var osCAMUIReader in currentServerStatusList)
+        //    {
+        //        if (scraperOptions.UnwantedStatus.Contains(osCAMUIReader.Status))
+        //        {
+        //            var reader = currentListOfCcCamReadersFromFile.Where(camReader => camReader.Label == osCAMUIReader.ReaderUser);  
+                    
+        //            readersToRemove.AddRange(reader);
+                    
+        //            Log.Information(osCAMUIReader.ReaderUser + " with status " + osCAMUIReader.Status + " is flagged to be deleted.");
+        //        }
+        //    }
 
-                            var totalCardCount = test.reader?.Select(oscamReader => oscamReader)
-                                                     .FirstOrDefault()
-                                                     ?.cardlist.FirstOrDefault()
-                                                     ?.totalcards;
+        //    if (readersToRemove.Count > 0)
+        //        currentListOfCcCamReadersFromFile = currentListOfCcCamReadersFromFile.Except(readersToRemove).ToList();
 
-                            if (totalCardCount == null || int.Parse(totalCardCount) == 0)
-                                return false;
+        //    return currentListOfCcCamReadersFromFile;
+        //}
 
-                            if (caiDs.Any())
-                                foreach (string caid in caiDs)
-                                {
-                                    var hasCaid = (test.reader.Select(oscamReader => oscamReader)
-                                                       .FirstOrDefault()?
-                                                       .cardlist.FirstOrDefault()?
-                                                       .card)
-                                        .FirstOrDefault(card => card.caid.Contains(caid));
+        //private static async Task<bool> HasTheReaderAUserDefinedCaid(string osCamReaderPageUrl, string[] caiDs)
+        //{
+        //    try
+        //    {
+        //        XmlSerializer serializer = new XmlSerializer(typeof(oscam));
+        //        using (var httpClient = new HttpClient())
+        //        {
+        //            httpClient.BaseAddress = new Uri(osCamReaderPageUrl);
+        //            httpClient.DefaultRequestHeaders.Accept.Clear();
+        //            httpClient.DefaultRequestHeaders.Add("User-Agent", @"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0");
 
-                                    if (hasCaid != null)
-                                        return true;
-                                }
-                            else
-                                return true;
+        //            var response = await httpClient.GetAsync(osCamReaderPageUrl).ConfigureAwait(false);
 
-                            return false;
-                        }
-                    }
+        //            response.EnsureSuccessStatusCode();
 
-                    Log.Error($"Didn't had access to the oscam reader details page: {osCamReaderPageUrl}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"Didn't had access to the oscam reader details page: {osCamReaderPageUrl}");
-                return true; // this is a bit special, if it throws we don't care and continue to the next line
-            }
+        //            if (response.IsSuccessStatusCode)
+        //            {
+        //                using (StringReader reader = new StringReader(await response.Content.ReadAsStringAsync().ConfigureAwait(false)))
+        //                {
+        //                    var test = (oscam)serializer.Deserialize(reader);
 
-            return false;
-        }
+        //                    var totalCardCount = test.reader?.Select(oscamReader => oscamReader)
+        //                                             .FirstOrDefault()
+        //                                             ?.cardlist.FirstOrDefault()
+        //                                             ?.totalcards;
+
+        //                    if (totalCardCount == null || int.Parse(totalCardCount) == 0)
+        //                        return false;
+
+        //                    if (caiDs.Any())
+        //                        foreach (string caid in caiDs)
+        //                        {
+        //                            var hasCaid = (test.reader.Select(oscamReader => oscamReader)
+        //                                               .FirstOrDefault()?
+        //                                               .cardlist.FirstOrDefault()?
+        //                                               .card)
+        //                                .FirstOrDefault(card => card.caid.Contains(caid));
+
+        //                            if (hasCaid != null)
+        //                                return true;
+        //                        }
+        //                    else
+        //                        return true;
+
+        //                    return false;
+        //                }
+        //            }
+
+        //            Log.Error($"Didn't had access to the oscam reader details page: {osCamReaderPageUrl}");
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Log.Error(ex, $"Didn't had access to the oscam reader details page: {osCamReaderPageUrl}");
+        //        return true; // this is a bit special, if it throws we don't care and continue to the next line
+        //    }
+
+        //    return false;
+        //}
 
         public static List<OsCamReader> AddNewScrapedReaders(List<OsCamReader> currentServerReaders, List<OsCamReader> newlyScrapedReaders)
         {
@@ -357,6 +371,85 @@ namespace CCCamScraper
             }
 
             Log.Information("Wrote a total of " + currentServerStatusList.Count + " readers to oscam.server");
+        }
+
+        public static async Task<List<string>> ScrapeCLinesFromUrl(CCCamScraperJobOption quartzJobsOptions)
+        {
+            var urlToScrapeFrom = UrlStringReplacement(quartzJobsOptions.URLToScrape);
+
+            Log.Information($"Started scraping on {urlToScrapeFrom}");
+
+            //We need to add the browser headers
+            DefaultHttpRequester req = new DefaultHttpRequester();
+            req.Headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0"; 
+//            req.Headers["authority"] = @"cccamiptv.club";
+//            req.Headers["accept"] = @"text / html, application / xhtml + xml, application / xml; q = 0.9,image / avif,image / webp,image / apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9";
+//req.Headers["accept-language"] = @"en,pt;q=0.9,pt-PT;q=0.8,en-GB;q=0.7,en-US;q=0.6,fr;q=0.5,es;q=0.4";
+//req.Headers["cache-control"] = @"no-cache";
+//req.Headers["cookie"] = @"_ga=GA1.2.132141673.1653296901; trp_language=en_US; _gid=GA1.2.1432885813.1653912358; crisp-client^%^2Fsession^%^2F2bd78d93-2a96-4942-b9a2-84799037f903=session_11da2a9d-c79f-418a-98f2-1f86ad9b019b";
+//req.Headers["dnt"] = @"1";
+//req.Headers["pragma"] = @"no-cache";
+//req.Headers["referer"] = @"https://cccamiptv.club/";
+//req.Headers["sec-ch-ua"] = @"^\^"" Not A;Brand^\^"";v=^\^""99^\^"", ^\^""Chromium^\^"";v=^\^""102^\^"", ^\^""Google Chrome^\^"";v=^\^""102^\^""";
+//req.Headers["sec-ch-ua-mobile"] = @"?0";
+//req.Headers["sec-ch-ua-platform"] = @"^\^""Windows^\^""";
+//req.Headers["sec-fetch-dest"] = @"document";
+//req.Headers["sec-fetch-mode"] = @"navigate";
+//req.Headers["sec-fetch-site"] = @"same-origin";
+//req.Headers["sec-fetch-user"] = @"?1";
+//req.Headers["upgrade-insecure-requests"] = @"1";
+//req.Headers["user-agent"] = @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.63 Safari/537.36";
+
+
+            // Load default configuration
+            var config = Configuration.Default.With(req).WithDefaultLoader().WithDefaultCookies();  // Create a new browsing context
+            var context = BrowsingContext.New(config);                                                          // This is where the HTTP request happens, returns <IDocument> that // we can query later
+            var document = await context.OpenAsync(urlToScrapeFrom);                                            // Log the data to the console
+
+            //firewall blocking this will yield ZERO lines (damn)
+            var lines = document.QuerySelectorAll(quartzJobsOptions!.ScrapePath)
+                .Select(m => m.InnerHtml
+                    .Replace("<br>", "")
+                    .Replace("</p>", "")
+                    .Trim()
+                    .Split("\n"));
+
+            List<string>? cLines = new List<string>();
+
+            try
+            {
+                cLines = lines?.ToList()[0].Where(line => line.ToLower().Trim().StartsWith("c:")).ToList();
+
+                if (cLines.Any())
+                {
+                    Log.Information($"Scraped {cLines.Count()} C lines from {urlToScrapeFrom}");
+                    return cLines;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Error getting C lines from {urlToScrapeFrom} <------ Is this a valid URL?");
+                return cLines;
+            }
+            
+            Log.Warning($"Scraped ZERO C lines from {urlToScrapeFrom}");
+            return cLines;
+        }
+
+        internal static string UrlStringReplacement(string url)
+        {
+            if (!(url.Contains('<') & url.Contains('>')))
+                return url;
+
+            string _day = DateTime.Today.Day.ToString("00", CultureInfo.InvariantCulture);
+            string _month = DateTime.Today.Month.ToString("00", CultureInfo.InvariantCulture);
+            string _year = DateTime.Today.Year.ToString("0000", CultureInfo.InvariantCulture);
+
+            url = url.Replace("<yyyy>", _year);
+            url = url.Replace("<mm>", _month);
+            url = url.Replace("<dd>", _day);
+
+            return url;
         }
     }
 }

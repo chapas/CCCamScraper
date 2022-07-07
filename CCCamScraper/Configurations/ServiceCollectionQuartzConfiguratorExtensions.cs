@@ -1,46 +1,49 @@
-﻿using System;
-using System.Linq;
+﻿using CCCamScraper.QuartzJobs;
 using Microsoft.Extensions.Configuration;
 using Quartz;
+using System;
 
 namespace CCCamScraper.Configurations
 {
     public static class ServiceCollectionQuartzConfiguratorExtensions
     {
-        public static void AddJobAndTrigger<T>(this IServiceCollectionQuartzConfigurator quartz, IConfigurationRoot serviceProvider) where T : IJob
+        public static void AddQuartzJobsAndTriggers<T>(this IServiceCollectionQuartzConfigurator quartz, IConfigurationRoot serviceProvider) where T : IJob
         {
-
             QuartzJobsOptions quartzJobsOptions = new QuartzJobsOptions();
             serviceProvider.GetSection("QuartzJobs").Bind(quartzJobsOptions);
 
-            var job = quartzJobsOptions.CCCamScraperJobs.FirstOrDefault(jobs => jobs.Name == typeof(T).Name);
+            var quartzjobs = quartzJobsOptions.CCCamScraperJobs;
 
-            // Use the name of the IJob as the appsettings.json key
-            //     string jobName = typeof(T).Name;
+            foreach (var quartzjob in quartzjobs)
+            {
+                // Use the name of the IJob as the appsettings.json key
+                //     string jobName = typeof(T).Name;
 
-            // Try and load the schedule from configuration
-            //    var configKey = $"Quartz:{jobName}";
-            //    var cronSchedule = config[configKey];
-            if (job == null)
-                throw new Exception($"No Quartz.NET Cron schedule found for job in configuration named {nameof(T)}");
+                // Try and load the schedule from configuration
+                //    var configKey = $"Quartz:{jobName}";
+                //    var cronSchedule = config[configKey];
+                if (quartzjob == null)
+                    throw new Exception($"No Quartz.NET Cron schedule found for job in configuration named {nameof(T)}");
 
-            //var jobName = job.Name;
-            //var cronSchedule = job.Schedule;
+                // register the job as before
+                var jobKey = new JobKey(quartzjob.Name);
+    
+                var type = Type.GetType("CCCamScraper.QuartzJobs." + quartzjob.Name);
 
-            // Some minor validation
-            //if (string.IsNullOrEmpty(job.Schedule))
-            //{
-            //    throw new Exception($"No Quartz.NET Cron schedule found for job in configuration at :");
-            //}
+                if (type == null) //then it's a scrape job
+                    quartz.AddJob(typeof(ScrapeJob), jobKey, opts => opts.WithIdentity(quartzjob.Name));
+                else
+                    quartz.AddJob(type, jobKey, opts => opts.WithIdentity(quartzjob.Name));
+                
+                if (quartzjob.RunOnceAtStartUp)
+                    quartz.AddTrigger(opts => opts.ForJob(jobKey)
+                                 .WithIdentity(quartzjob.Name + "-trigger-now")
+                                 .StartNow());
 
-            // register the job as before
-            var jobKey = new JobKey(job.Name);
-            quartz.AddJob<T>(opts => opts.WithIdentity(jobKey));
-
-            quartz.AddTrigger(opts => opts
-                .ForJob(jobKey)
-                .WithIdentity(job.Name + "-trigger")
-                .WithCronSchedule(job.Schedule)); // use the schedule from configuration
+                quartz.AddTrigger(opts => opts.ForJob(jobKey)
+                    .WithIdentity(quartzjob.Name + "-trigger")
+                    .WithCronSchedule(quartzjob.Schedule));
+            }
         }
     }
 }
