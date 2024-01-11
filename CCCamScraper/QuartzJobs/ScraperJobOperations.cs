@@ -45,35 +45,35 @@ namespace CCCamScraper.QuartzJobs
 
         private static CcCamLine ParseCLine(string cline)
         {
-            if (!cline.StartsWith(@"C:"))
+            const string cPrefix = "c:";
+            const char spaceChar = ' ';
+
+            cline = cline.ToLowerInvariant();
+
+            if (!cline.StartsWith(cPrefix))
                 return null;
 
             var line = new CcCamLine();
 
-            if (cline.LastIndexOf('#') != -1)
+            // Extracting the CCCVersion
+            int lastIndexOfCardinal = cline.LastIndexOf('#');
+            if (lastIndexOfCardinal != -1)
             {
-                var lastIndexOfCardinal = cline.LastIndexOf('#');
-
-                var c = cline.Substring(lastIndexOfCardinal + 1, cline.Length - lastIndexOfCardinal - 1).Trim()
-                    .Replace("v", "");
-                line.Cccversion = c.Remove(c.IndexOf("-"), c.Length - c.IndexOf("-"));
-
-                cline = cline.Substring(0, cline.IndexOf("#") - 1).Trim();
+                string versionSubstring = cline.Substring(lastIndexOfCardinal + 1).Trim().Replace("v", "");
+                line.Cccversion = versionSubstring.Split('-')[0];
+                cline = cline.Substring(0, lastIndexOfCardinal - 1).Trim();
             }
 
-            var s = cline.Replace("C:", "").Replace("c:", "").Trim().Split(" ");
+            // Removing C: or c: and splitting by space
+            string[] s = cline.Substring(cPrefix.Length).Trim().Split(spaceChar);
 
             line.Hostname = s[0];
             line.Port = s[1];
             line.Username = s[2];
             line.Password = s[3];
 
-
-            //try
-            //{
-            //    line.wantemus = s[4] == "no" ? "no" : "yes";
-            //}
-            //catch { }
+            // Setting wantemus with a default value
+            //line.Wantemus = s.Length > 4 && s[4] != "no" ? "yes" : "no";
 
             return line;
         }
@@ -125,6 +125,12 @@ namespace CCCamScraper.QuartzJobs
             var lista = new List<OsCamReader>();
             var reader = new OsCamReader();
             var counter = 0;
+
+            if (!File.Exists(oscamServerFilepath))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(oscamServerFilepath) ?? throw new InvalidOperationException());
+                File.Create(oscamServerFilepath).Dispose();
+            }
 
             try
             {
@@ -199,8 +205,8 @@ namespace CCCamScraper.QuartzJobs
                                     : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "inactivitytimeout":
-                                reader.Inactivitytimeout = string.IsNullOrEmpty(arrayCCCAMLines[1])
-                                    ? reader.Inactivitytimeout
+                                reader.InactivityTimeout = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.InactivityTimeout
                                     : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "group":
@@ -219,8 +225,8 @@ namespace CCCamScraper.QuartzJobs
                                     : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "reconnecttimeout":
-                                reader.Reconnecttimeout = string.IsNullOrEmpty(arrayCCCAMLines[1])
-                                    ? reader.Reconnecttimeout
+                                reader.ReconnectTimeout = string.IsNullOrEmpty(arrayCCCAMLines[1])
+                                    ? reader.ReconnectTimeout
                                     : arrayCCCAMLines[1].Trim();
                                 continue;
                             case "lb_weight":
@@ -394,6 +400,9 @@ namespace CCCamScraper.QuartzJobs
         public static void WriteOsCamReadersToFile(List<OsCamReader> currentServerStatusList,
             string oscamServerFilepath = @"oscam.server")
         {
+            // Define a static object for locking
+            object fileLock = new object();
+
             var readers = new List<OsCamReader>();
 
             foreach (var reader in currentServerStatusList)
@@ -404,14 +413,19 @@ namespace CCCamScraper.QuartzJobs
                 readers.Add(reader);
             }
 
-            using (var sr = new StreamWriter(oscamServerFilepath, false, Encoding.ASCII))
+            // Use lock to ensure exclusive access to the file
+            lock (fileLock)
             {
-                foreach (var reader in readers)
-                    sr.Write(reader.ToString());
+                using (var sr = new StreamWriter(oscamServerFilepath, false, Encoding.ASCII))
+                {
+                    foreach (var reader in readers)
+                        sr.Write(reader.ToString());
+                }
             }
 
             Log.Information("Wrote a total of " + currentServerStatusList.Count + " readers to oscam.server");
         }
+
 
         public static async Task<List<string>> ScrapeCLinesFromUrl(CCCamScraperJobOption quartzJobsOptions)
         {
@@ -445,10 +459,28 @@ namespace CCCamScraper.QuartzJobs
             // Load default configuration
             var config = Configuration.Default.With(req).WithDefaultLoader()
                 .WithDefaultCookies(); // Create a new browsing context
-            var context =
-                BrowsingContext
-                    .New(config); // This is where the HTTP request happens, returns <IDocument> that // we can query later
-            var document = await context.OpenAsync(urlToScrapeFrom); // Log the data to the console
+            //var context = BrowsingContext.New(config); // This is where the HTTP request happens, returns <IDocument> that // we can query later
+            
+            var document = await BrowsingContext.New(config).OpenAsync(urlToScrapeFrom); // Log the data to the console
+
+            HashSet<string> uniqueCStrings = new HashSet<string>();
+
+            // Traverse the DOM and find strings starting with 'c: ' in every element
+            foreach (var element in document.All)
+            {
+                string textContent = element.TextContent.Trim();
+
+                // Check if the text content starts with 'c: '
+                if (textContent.StartsWith("c: ", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Add to the HashSet to ensure uniqueness
+                    uniqueCStrings.Add(textContent);
+                }
+            }
+
+            // Convert the HashSet to a List
+            return new List<string>(uniqueCStrings);
+
 
             //firewall blocking this will yield ZERO lines (damn)
             var lines = document.QuerySelectorAll(quartzJobsOptions!.ScrapePath)

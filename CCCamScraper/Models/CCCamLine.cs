@@ -7,38 +7,38 @@ namespace CCCamScraper.Models
         public const string CLineIndentifier = @"C:";
 
         /// <summary>
-        ///     Instructions where to look for a server
+        /// Instructions where to look for a server
         /// </summary>
         public string Hostname { get; set; }
 
         /// <summary>
-        ///     Which port that server is using
+        /// Which port that server is using
         /// </summary>
         public string Port { get; set; }
 
         /// <summary>
-        ///     Username to connect to that server
+        /// Username to connect to that server
         /// </summary>
         public string Username { get; set; }
 
         /// <summary>
-        ///     Password to connect to that server
+        /// Password to connect to that server
         /// </summary>
         public string Password { get; set; }
 
         /// <summary>
-        ///     If you like to receive Emulator shares from keys
-        ///     (only if set to 1 if set to give emus on the f line from the server you are getting )
+        /// If you like to receive Emulator shares from keys
+        /// (only if set to 1 if set to give emus on the f line from the server you are getting )
         /// </summary>
         public string Wantemus { get; set; } = "no"; //yes or no
 
         /// <summary>
-        ///     Limiting what to get from that particular server
+        /// Limiting what to get from that particular server
         /// </summary>
         public List<Providers> ExcludedProviders { get; set; }
 
         /// <summary>
-        ///     Line comment
+        /// Line comment
         /// </summary>
         public string Cccversion { get; set; } //ex: # v2.0.11-2892
     }

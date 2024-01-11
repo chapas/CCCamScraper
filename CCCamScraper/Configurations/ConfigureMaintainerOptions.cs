@@ -4,14 +4,14 @@ using Microsoft.Extensions.Options;
 namespace CCCamScraper.Configurations
 {
     /// <summary>
-    ///     Implementation of the configurable oscam maintiainer options
+    /// Implementation of the configurable oscam maintainer options
     /// </summary>
     public class ConfigureMaintainerOptions : IConfigureOptions<CCCamScraperOptions>
     {
         private readonly IConfiguration _configuration;
 
         /// <summary>
-        ///     Instantiates a <see cref="ConfigureMaintainerOptions" />
+        /// Instantiates a <see cref="ConfigureMaintainerOptions" />
         /// </summary>
         /// <param name="configuration">Service configuration</param>
         public ConfigureMaintainerOptions(IConfiguration configuration)

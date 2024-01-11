@@ -6,7 +6,7 @@ namespace CCCamScraper.Models
     {
         public const string Reader = @"[reader]";
         public string Label { get; set; } = ""; // same as label
-        public string Description { get; set; } // error;off;unknown;no data;username
+        public string Description { get; set; } = ""; // error;off;unknown;no data;username
         public string Enable { get; set; } = "1";
         public string Protocol { get; set; } = "cccam"; //cccam ou newcam
         public string Key { get; set; } = "";
@@ -15,13 +15,13 @@ namespace CCCamScraper.Models
         public string User { get; set; } = "";
         public string Password { get; set; } = "";
         public string Group { get; set; } = "1";
-        public string Inactivitytimeout { get; set; } = "30";
-        public string Reconnecttimeout { get; set; } = "30";
+        public string InactivityTimeout { get; set; } = "30";
+        public string ReconnectTimeout { get; set; } = "30";
         public string LbWeight { get; set; } = "100";
         public string Cccversion { get; set; } = "2.1.2";
         public string Cccmaxhops { get; set; } = "10";
         public string Cccwantemu { get; set; } = "0";
-        public string Ccckeepalive { get; set; } = "0";
+        public string Ccckeepalive { get; set; } = "1";
 
         public override string ToString()
         {
@@ -39,8 +39,8 @@ namespace CCCamScraper.Models
             sb.AppendLine("user                     = " + User);
             sb.AppendLine("password                 = " + Password);
             sb.AppendLine("group                    = " + Group);
-            sb.AppendLine("inactivitytimeout        = " + Inactivitytimeout);
-            sb.AppendLine("reconnecttimeout         = " + Reconnecttimeout);
+            sb.AppendLine("inactivitytimeout        = " + InactivityTimeout);
+            sb.AppendLine("reconnecttimeout         = " + ReconnectTimeout);
             sb.AppendLine("lb_weight                = " + LbWeight);
             sb.AppendLine("cccversion               = " + Cccversion);
             sb.AppendLine("cccmaxhops               = " + Cccmaxhops);

@@ -16,7 +16,7 @@
         public string Status { get; set; }
 
         /// <summary>
-        ///     Description is shown on 'Reader/User' field hint
+        /// Description is shown on 'Reader/User' field hint
         /// </summary>
         public string Description { get; set; }
 

@@ -10,7 +10,7 @@ namespace CCCamScraper.Configurations
         private readonly IConfiguration _configuration;
 
         /// <summary>
-        ///     Instantiates a <see cref="QuartzJobsOptions" />
+        /// Instantiates a <see cref="QuartzJobsOptions" />
         /// </summary>
         /// <param name="configuration">Service configuration</param>
         public ConfigureQuartzJobsOptions(IConfiguration configuration)

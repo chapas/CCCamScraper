@@ -9,6 +9,7 @@ using Serilog.Debugging;
 using System;
 using System.IO;
 using System.Threading;
+using Quartz.AspNetCore;
 
 namespace CCCamScraper
 {
@@ -64,7 +65,7 @@ namespace CCCamScraper
                 {
                     services.AddSingleton(_ =>
                     {
-                        var scraperOptions = new CCCamScraperOptions();
+                        var scraperOptions = new  CCCamScraperOptions();
                         _configuration.GetSection("OsCam").Bind(scraperOptions);
 
                         return scraperOptions;

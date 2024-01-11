@@ -35,15 +35,13 @@ namespace CCCamScraper.QuartzJobs
                     var scrapedCLinesFromUrl = await ScraperJobOperations.ScrapeCLinesFromUrl(quartzJobsOption)
                         .ConfigureAwait(false);
 
-                    var parsedCLines =
-                        ScraperJobOperations.ParseCLines(scrapedCLinesFromUrl, quartzJobsOption.URLToScrape);
+                    var parsedCLines = ScraperJobOperations.ParseCLines(scrapedCLinesFromUrl, quartzJobsOption.URLToScrape);
 
                     var readersFromOscamServer = await ScraperJobOperations
                         .GetListWithCurrentReadersOnOscamServerFile(cccamScraperOptions.OscamServerPath)
                         .ConfigureAwait(false);
 
-                    var currentListOfCcCamReadersFromFileNew =
-                        ScraperJobOperations.AddNewScrapedReaders(readersFromOscamServer, parsedCLines);
+                    var currentListOfCcCamReadersFromFileNew = ScraperJobOperations.AddNewScrapedReaders(readersFromOscamServer, parsedCLines);
 
                     ScraperJobOperations.WriteOsCamReadersToFile(currentListOfCcCamReadersFromFileNew,
                         cccamScraperOptions.OscamServerPath);
