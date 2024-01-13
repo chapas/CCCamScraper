@@ -10,6 +10,11 @@
     <Platforms>AnyCPU;ARM32</Platforms>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Configurations\ConfigureCCCamScraperOptions.cs" />
+    <Compile Remove="Configurations\ConfigureQuartzJobsOptions.cs" />
+    <Compile Remove="QuartzJobs\ParseCLinesHandler.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.16.1" />
     <PackageReference Include="Quartz.AspNetCore" Version="3.4.0" />
     <PackageReference Include="Quartz.Extensions.Hosting" Version="3.4.0" />
@@ -30,6 +35,9 @@
     <PackageReference Include="Serilog.Sinks.Async" Version="1.5.0" />
 
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CCCamScraper.Models\CCCamScraper.Models.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="appsettings.json">

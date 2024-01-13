@@ -27,7 +27,7 @@
         /// <value>
         /// The URL with status page from OsCam
         /// </value>
-        public string OsCamStatusPageURL { get; set; }
+        public string OsCamStatusPageUrl { get; set; }
 
         /// <summary>
         /// Gets or sets OsCam reader endpoint
@@ -35,7 +35,7 @@
         /// <value>
         /// The URL with reader entitlements (available shares)
         /// </value>
-        public string OsCamReaderPageURL { get; set; }
+        public string OsCamReaderPageUrl { get; set; }
 
         /// <summary>
         /// Gets or sets OsCam reader endpoint
@@ -43,7 +43,7 @@
         /// <value>
         /// The URL with reader entitlements (available shares)
         /// </value>
-        public string OsCamReaderAPIURL { get; set; }
+        public string OsCamReaderApiurl { get; set; }
 
         /// <summary>
         /// Gets or sets allowed CAID's
@@ -51,7 +51,7 @@
         /// <value>
         /// A list of CAID's that we find on the readers
         /// </value>
-        public string[] CAIDs { get; set; }
+        public string[] CaiDs { get; set; }
 
         /// <summary>
         /// Gets or sets servers excluded from being deleted

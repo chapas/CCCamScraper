@@ -1,6 +1,4 @@
-﻿using CCCamScraper.Configurations;
-using CCCamScraper.QuartzJobs;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Quartz;
@@ -9,7 +7,8 @@ using Serilog.Debugging;
 using System;
 using System.IO;
 using System.Threading;
-using Quartz.AspNetCore;
+using CCCamScraper.Configurations;
+using Microsoft.Extensions.Options;
 
 namespace CCCamScraper
 {
@@ -63,26 +62,21 @@ namespace CCCamScraper
                 .UseSerilog()
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services.AddSingleton(_ =>
-                    {
-                        var scraperOptions = new  CCCamScraperOptions();
-                        _configuration.GetSection("OsCam").Bind(scraperOptions);
+                    services.Configure<CCCamScraperOptions>(_configuration.GetSection("OsCam"));
 
-                        return scraperOptions;
-                    });
-                    services.AddSingleton(_ =>
-                    {
-                        var quartzJobsOptions = new QuartzJobsOptions();
-                        _configuration.GetSection("QuartzJobs").Bind(quartzJobsOptions);
+                    services.Configure<QuartzJobsOptions>(_configuration.GetSection("QuartzJobs"));
+                    
+                    var serviceProvider = services.BuildServiceProvider();
 
-                        return quartzJobsOptions;
-                    });
+                    //// Resolve the services from the service provider
+                    var quartzJobsOptions = serviceProvider.GetRequiredService<IOptionsMonitor<QuartzJobsOptions>>();
+
                     services.AddQuartz(q =>
                     {
                         q.UseMicrosoftDependencyInjectionJobFactory();
 
                         // Register the job, loading the schedule from configuration
-                        q.AddQuartzJobsAndTriggers<ScrapeJob>(_configuration);
+                        q.AddQuartzJobsAndTriggers(_configuration, quartzJobsOptions);
                     });
 
                     services.AddQuartzHostedService(options => { options.WaitForJobsToComplete = true; });

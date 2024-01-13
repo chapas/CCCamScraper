@@ -35,7 +35,7 @@ namespace CCCamScraper.Models
         /// <summary>
         /// Limiting what to get from that particular server
         /// </summary>
-        public List<Providers> ExcludedProviders { get; set; }
+        public List<Providers> Providers { get; set; }
 
         /// <summary>
         /// Line comment

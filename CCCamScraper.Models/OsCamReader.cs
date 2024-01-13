@@ -22,6 +22,7 @@ namespace CCCamScraper.Models
         public string Cccmaxhops { get; set; } = "10";
         public string Cccwantemu { get; set; } = "0";
         public string Ccckeepalive { get; set; } = "1";
+        public string Caid { get; set; }
 
         public override string ToString()
         {
@@ -42,11 +43,14 @@ namespace CCCamScraper.Models
             sb.AppendLine("inactivitytimeout        = " + InactivityTimeout);
             sb.AppendLine("reconnecttimeout         = " + ReconnectTimeout);
             sb.AppendLine("lb_weight                = " + LbWeight);
-            sb.AppendLine("cccversion               = " + Cccversion);
+            if (!string.IsNullOrEmpty(Cccversion))
+                sb.AppendLine("cccversion               = " + Cccversion);
             sb.AppendLine("cccmaxhops               = " + Cccmaxhops);
             if (!string.IsNullOrEmpty(Cccwantemu))
                 sb.AppendLine("cccwantemu               = " + Cccwantemu);
             sb.AppendLine("ccckeepalive             = " + Ccckeepalive);
+            if (!string.IsNullOrEmpty(Caid))
+                sb.AppendLine("caid                     = " + Caid);
             sb.AppendLine();
 
             return sb.ToString();
