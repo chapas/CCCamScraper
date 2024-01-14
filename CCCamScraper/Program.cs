@@ -1,14 +1,13 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿
+using CCCamScraper.Configurations;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Quartz;
+using Quartz.AspNetCore;
 using Serilog;
 using Serilog.Debugging;
-using System;
-using System.IO;
-using System.Threading;
-using CCCamScraper.Configurations;
-using Microsoft.Extensions.Options;
 
 namespace CCCamScraper
 {
