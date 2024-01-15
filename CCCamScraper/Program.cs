@@ -61,10 +61,16 @@ namespace CCCamScraper
                 .UseSerilog()
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services.Configure<CCCamScraperOptions>(_configuration.GetSection("OsCam"));
+                    services.AddOptions<CCCamScraperOptions>()
+                        .BindConfiguration("OsCam")
+                        .ValidateDataAnnotations()
+                        .ValidateOnStart();
 
-                    services.Configure<QuartzJobsOptions>(_configuration.GetSection("QuartzJobs"));
-                    
+                    services.AddOptions<QuartzJobsOptions>()
+                        .BindConfiguration("QuartzJobs")
+                        .ValidateDataAnnotations()
+                        .ValidateOnStart();
+
                     var serviceProvider = services.BuildServiceProvider();
 
                     //// Resolve the services from the service provider

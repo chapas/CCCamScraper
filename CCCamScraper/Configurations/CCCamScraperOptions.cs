@@ -1,4 +1,6 @@
-﻿namespace CCCamScraper.Configurations
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace CCCamScraper.Configurations
 {
     /// <summary>
     /// Maintainer configurations
@@ -11,6 +13,7 @@
         /// <value>
         /// The oscam.server file path
         /// </value>
+        [Required]
         public string OscamServerPath { get; set; }
 
         /// <summary>
