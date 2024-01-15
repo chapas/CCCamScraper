@@ -67,22 +67,6 @@ namespace CCCamScraper.Handlers
             return result;
         }
 
-        public HashSet<string> ExtractMatches(IEnumerable<string> inputs, Regex pattern)
-        {
-            HashSet<string> matchSet = new HashSet<string>();
-
-            Parallel.ForEach(inputs, input =>
-            {
-                MatchCollection matches = pattern.Matches(input);
-                foreach (Match match in matches)
-                {
-                    matchSet.Add(match.Value);
-                }
-            });
-
-            return matchSet;
-        }
-
         private static string UrlStringReplacement(string url)
         {
             if (!(url.Contains('<') & url.Contains('>')))
@@ -131,11 +115,13 @@ namespace CCCamScraper.Handlers
                 return null;
             }
 
-            CcCamLine result = new CcCamLine();
-            result.Hostname = match.Groups[1].Value.Trim();
-            result.Port = match.Groups[2].Value.Trim();
-            result.Username = match.Groups[3].Value.Trim();
-            result.Password = match.Groups[4].Value.Trim();
+            CcCamLine result = new CcCamLine
+            {
+                Hostname = match.Groups[1].Value.Trim(),
+                Port = match.Groups[2].Value.Trim(),
+                Username = match.Groups[3].Value.Trim(),
+                Password = match.Groups[4].Value.Trim()
+            };
 
             string versionGroup = match.Groups[5].Value.Trim();
             string[] validVersions = { "2.0.11", "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.2.8", "2.2.1", "2.3.6", "2.3.1", "2.3.2" };
@@ -165,9 +151,9 @@ namespace CCCamScraper.Handlers
     {
         public bool Equals(OsCamReader x, OsCamReader y)
         {
-            return x.Device.ToLowerInvariant() == y.Device.ToLowerInvariant()
-                   && x.User.ToLowerInvariant() == y.User.ToLowerInvariant()
-                   && x.Password.ToLowerInvariant() == y.Password.ToLowerInvariant();
+            return string.Equals(x.Device, y.Device, StringComparison.InvariantCultureIgnoreCase)
+                   && string.Equals(x.User, y.User, StringComparison.InvariantCultureIgnoreCase)
+                   && string.Equals(x.Password, y.Password, StringComparison.InvariantCultureIgnoreCase);
         }
 
         public int GetHashCode(OsCamReader obj)
