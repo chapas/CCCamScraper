@@ -1,15 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using Quartz;
-using System.Threading.Tasks;
-using AngleSharp;
+﻿using AngleSharp;
 using AngleSharp.Io;
 using CCCamScraper.Configurations;
-using Serilog;
 using CCCamScraper.Models;
 using Microsoft.Extensions.Options;
+using Quartz;
+using Serilog;
+using System.Globalization;
+using System.Text.RegularExpressions;
+using System.Collections.Generic;
+
 
 namespace CCCamScraper.Handlers
 {
@@ -18,6 +17,7 @@ namespace CCCamScraper.Handlers
         private readonly string urlToScrape;
         private readonly IOptionsMonitor<CCCamScraperOptions> _ccCamScraperOptions;
         private IHandler _nextHandler;
+        private const string cccamRegExPattern = @"[cC]: ([\w.-]+ )(\b\d{1,5}\b )([\w.-]+ )([\w.-]+)( # ?[\w.-]+)?";
 
         public ScrapeCLinesFromUrlHandler(
             string urlToScrape,
@@ -54,15 +54,33 @@ namespace CCCamScraper.Handlers
             var config = Configuration.Default.With(req).WithDefaultLoader().WithDefaultCookies();
             var document = await BrowsingContext.New(config).OpenAsync(urlToScrapeFrom);
 
-            var uniqueCStrings = document.All
-                .Where(element => element.TextContent.Trim().StartsWith("c: ", StringComparison.OrdinalIgnoreCase))
-                .Select(element => element.TextContent.Trim())
-                .ToHashSet();
+            var uniqueCStrings = document.All[0].InnerHtml
+                .Split(new[] { "\r\n", "\r", "\n"}, StringSplitOptions.TrimEntries)
+                .Where(line => line.Contains(@"c: ", StringComparison.OrdinalIgnoreCase));
 
-            return SplitLinesIntoHashSet(uniqueCStrings).ToList();
+            var list = ExtractMatches(uniqueCStrings, cccamRegExPattern);
+            
+            return SplitLinesIntoHashSet(list.ToHashSet()).ToList();
         }
 
-        private static string UrlStringReplacement(string url)
+        public List<string> ExtractMatches(IEnumerable<string> inputs, string pattern)
+        {
+            Regex regex = new Regex(pattern);
+            List<string> matchList = new List<string>();
+
+            foreach (string input in inputs)
+            {
+                MatchCollection matches = regex.Matches(input);
+                foreach (Match match in matches)
+                {
+                    matchList.Add(match.Value);
+                }
+            }
+
+            return matchList;
+        }
+
+    private static string UrlStringReplacement(string url)
         {
             if (!(url.Contains('<') & url.Contains('>')))
                 return url;
@@ -100,41 +118,40 @@ namespace CCCamScraper.Handlers
             return readers;
         }
 
+
         private static CcCamLine ParseCLine(string cline)
         {
-            const string cPrefix = "c:";
-            const char spaceChar = ' ';
+                Match match = Regex.Match(cline, cccamRegExPattern);
+                if (!match.Success)
+                {
+                    return null;
+                }
 
-            cline = cline.ToLowerInvariant();
+                CcCamLine result = new CcCamLine();
+                result.Hostname = match.Groups[1].Value.Trim();
+                result.Port = match.Groups[2].Value.Trim();
+                result.Username = match.Groups[3].Value.Trim();
+                result.Password = match.Groups[4].Value.Trim();
 
-            if (!cline.StartsWith(cPrefix))
-                return null!;
+                string versionGroup = match.Groups[5].Value.Trim();
+                string[] validVersions = { "2.0.11", "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.2.8", "2.2.1", "2.3.6", "2.3.1", "2.3.2" };
+                foreach (string validVersion in validVersions)
+                {
+                    if (versionGroup.Contains(validVersion))
+                    {
+                        result.Cccversion = validVersion;
+                        break;
+                    }
+                }
 
-            var line = new CcCamLine();
-
-            int lastIndexOfCardinal = cline.LastIndexOf('#');
-            if (lastIndexOfCardinal != -1)
-            {
-                string versionSubstring = cline.Substring(lastIndexOfCardinal + 1).Trim().Replace("v", "");
-                line.Cccversion = versionSubstring.Split('-')[0];
-                cline = cline.Substring(0, lastIndexOfCardinal - 1).Trim();
-            }
-
-            string[] s = cline.Substring(cPrefix.Length).Trim().Split(spaceChar);
-
-            line.Hostname = s[0];
-            line.Port = s[1];
-            line.Username = s[2];
-            line.Password = s[3];
-
-            return line;
+                return result;
         }
 
         public HashSet<string> SplitLinesIntoHashSet(HashSet<string> inputSet)
         {
             if (inputSet.Count > 1)
                 return inputSet;
-            
+
             var input = inputSet.First();
 
             if (input.Count(sub => sub == 'C') > 1)
@@ -151,9 +168,9 @@ namespace CCCamScraper.Handlers
     {
         public bool Equals(OsCamReader x, OsCamReader y)
         {
-            return x.Device == y.Device
-                   && x.User == y.User
-                   && x.Password == y.Password;
+            return x.Device.ToLowerInvariant() == y.Device.ToLowerInvariant()
+                   && x.User.ToLowerInvariant() == y.User.ToLowerInvariant()
+                   && x.Password.ToLowerInvariant() == y.Password.ToLowerInvariant();
         }
 
         public int GetHashCode(OsCamReader obj)

@@ -3,9 +3,6 @@ using CCCamScraper.Handlers;
 using Microsoft.Extensions.Options;
 using Quartz;
 using Serilog;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace CCCamScraper.QuartzJobs.Jobs
 {

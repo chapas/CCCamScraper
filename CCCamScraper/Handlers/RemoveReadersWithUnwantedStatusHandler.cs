@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using CCCamScraper.Configurations;
+﻿using CCCamScraper.Configurations;
 using CCCamScraper.Models;
 using Microsoft.Extensions.Options;
 using Quartz;

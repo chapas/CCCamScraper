@@ -1,6 +1,5 @@
 ﻿using Quartz;
 using Serilog;
-using System.Threading.Tasks;
 using CCCamScraper.Configurations;
 using CCCamScraper.Handlers;
 using Microsoft.Extensions.Options;

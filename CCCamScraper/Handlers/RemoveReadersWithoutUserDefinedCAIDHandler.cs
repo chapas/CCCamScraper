@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Threading.Tasks;
-using CCCamScraper.Configurations;
+﻿using CCCamScraper.Configurations;
 using CCCamScraper.Models;
 using System.Xml.Serialization;
 using Microsoft.Extensions.Options;

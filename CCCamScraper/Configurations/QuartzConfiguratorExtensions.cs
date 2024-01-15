@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Quartz;
-using System;
 using CCCamScraper.QuartzJobs.Jobs;
 using Microsoft.Extensions.Options;
 

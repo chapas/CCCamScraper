@@ -1,7 +1,6 @@
 ﻿using CCCamScraper.Configurations;
 using Microsoft.Extensions.Options;
 using Quartz;
-using System.Threading.Tasks;
 
 namespace CCCamScraper.Handlers
 {
