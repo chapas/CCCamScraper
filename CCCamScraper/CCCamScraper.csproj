@@ -10,6 +10,11 @@
     <Platforms>AnyCPU;ARM32</Platforms>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="config\**" />
+    <EmbeddedResource Remove="config\**" />
+    <None Remove="config\**" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Remove="Configurations\ConfigureCCCamScraperOptions.cs" />
     <Compile Remove="Configurations\ConfigureQuartzJobsOptions.cs" />
     <Compile Remove="QuartzJobs\ParseCLinesHandler.cs" />

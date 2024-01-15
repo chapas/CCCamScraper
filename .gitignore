@@ -16,3 +16,5 @@ TestResults
 /dotnet-core-applaunchframework=Microsoft.AspNetCore.App
 /dotnet-install.sh
 /wget-log
+oscam.server
+*.log

@@ -127,7 +127,7 @@ namespace CCCamScraper
                 Log.Error(ex, "Error while reading from oscam.server file");
             }
 
-            Log.Information("Got " + osCamReaders.Count + " readers from oscam.server file");
+            Log.Information("Fetched " + osCamReaders.Count + " readers from 'oscam.server' file");
 
             return Task.FromResult(osCamReaders);
         }
