@@ -4,29 +4,34 @@ using CCCamScraper.Configurations;
 using CCCamScraper.Handlers;
 using Microsoft.Extensions.Options;
 
-namespace CCCamScraper.QuartzJobs.Jobs
+namespace CCCamScraper.QuartzJobs.Jobs;
+
+[DisallowConcurrentExecution]
+public class RemoveReadersWithoutUserDefinedCaidJob : IJob
 {
-    [DisallowConcurrentExecution]
-    public class RemoveReadersWithoutUserDefinedCaidJob : IJob
+    private readonly IOptionsMonitor<CCCamScraperOptions> _cccamScraperOptions;
+
+    public RemoveReadersWithoutUserDefinedCaidJob(
+        IOptionsMonitor<CCCamScraperOptions> cccamScraperOptions)
     {
-        private readonly IOptionsMonitor<CCCamScraperOptions> _cccamScraperOptions;
+        _cccamScraperOptions = cccamScraperOptions;
+    }
 
-        public RemoveReadersWithoutUserDefinedCaidJob(
-            IOptionsMonitor<CCCamScraperOptions> cccamScraperOptions)
+    public async Task Execute(IJobExecutionContext context)
+    {
+        if (_cccamScraperOptions.CurrentValue.CaiDs.Length == 0)
         {
-            _cccamScraperOptions = cccamScraperOptions;
+            Log.Information("No user CAID's defined, skipping Job");
+            return;
         }
 
-        public async Task Execute(IJobExecutionContext context)
-        {
-                Log.Information("Started removing readers from oscam.server file without users CAID's");
+        Log.Information("Started removing readers from oscam.server file without users CAID's");
 
-                IHandler handler = new GetCurrentReadersOnOscamServerFileHandler(_cccamScraperOptions);
-                handler
-                    .SetNext(new RemoveReadersWithoutUserDefinedCAIDHandler(_cccamScraperOptions))
-                    .SetNext(new WriteOsCamReadersToFileHandler(_cccamScraperOptions));
+        IHandler handler = new GetCurrentReadersOnOscamServerFileHandler(_cccamScraperOptions);
+        handler
+            .SetNext(new RemoveReadersWithoutUserDefinedCAIDHandler(_cccamScraperOptions))
+            .SetNext(new WriteOsCamReadersToFileHandler(_cccamScraperOptions));
 
-                await handler.Handle(context);
-        }
+        await handler.Handle(context);
     }
 }

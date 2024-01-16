@@ -3,31 +3,31 @@ using CCCamScraper.Models;
 using Microsoft.Extensions.Options;
 using Quartz;
 
-namespace CCCamScraper.Handlers
+namespace CCCamScraper.Handlers;
+
+public class WriteOsCamReadersToFileHandler : IHandler
 {
-    public class WriteOsCamReadersToFileHandler : IHandler
+    private readonly IOptionsMonitor<CCCamScraperOptions> _ccCamScraperOptions;
+    private IHandler _nextHandler;
+
+    public WriteOsCamReadersToFileHandler(IOptionsMonitor<CCCamScraperOptions> ccCamScraperOptions)
     {
-        private readonly IOptionsMonitor<CCCamScraperOptions> _ccCamScraperOptions;
-        private IHandler _nextHandler;
+        _ccCamScraperOptions = ccCamScraperOptions;
+    }
 
-        public WriteOsCamReadersToFileHandler(IOptionsMonitor<CCCamScraperOptions> ccCamScraperOptions)
-        {
-            _ccCamScraperOptions = ccCamScraperOptions;
-        }
+    public IHandler SetNext(IHandler handler)
+    {
+        _nextHandler = handler;
+        return _nextHandler;
+    }
 
-        public IHandler SetNext(IHandler handler)
-        {
-            _nextHandler = handler;
-            return _nextHandler;
-        }
-
-        public Task<object> Handle(IJobExecutionContext context)
-        {
+    public Task<object> Handle(IJobExecutionContext context)
+    {
+        if (((List<OsCamReader>)context.Result).Any())
             ScraperJobOperations.WriteOsCamReadersToFile(
-                (List<OsCamReader>)context.Result, 
-                _ccCamScraperOptions.CurrentValue.OscamServerPath);
+            (List<OsCamReader>)context.Result, 
+            _ccCamScraperOptions.CurrentValue.OscamServerPath);
 
-            return _nextHandler?.Handle(context)!;
-        }
+        return _nextHandler?.Handle(context)!;
     }
 }

@@ -1,47 +1,46 @@
 ﻿using System.Collections.Generic;
 
-namespace CCCamScraper.Models
+namespace CCCamScraper.Models;
+
+public class CcCamLine
 {
-    public class CcCamLine
-    {
-        public const string CLineIndentifier = @"C:";
+    public const string CLineIndentifier = @"C:";
 
-        /// <summary>
-        /// Instructions where to look for a server
-        /// </summary>
-        public string Hostname { get; set; }
+    /// <summary>
+    /// Instructions where to look for a server
+    /// </summary>
+    public string Hostname { get; set; }
 
-        /// <summary>
-        /// Which port that server is using
-        /// </summary>
-        public string Port { get; set; }
+    /// <summary>
+    /// Which port that server is using
+    /// </summary>
+    public string Port { get; set; }
 
-        /// <summary>
-        /// Username to connect to that server
-        /// </summary>
-        public string Username { get; set; }
+    /// <summary>
+    /// Username to connect to that server
+    /// </summary>
+    public string Username { get; set; }
 
-        /// <summary>
-        /// Password to connect to that server
-        /// </summary>
-        public string Password { get; set; }
+    /// <summary>
+    /// Password to connect to that server
+    /// </summary>
+    public string Password { get; set; }
 
-        /// <summary>
-        /// If you like to receive Emulator shares from keys
-        /// (only if set to 1 if set to give emus on the f line from the server you are getting )
-        /// </summary>
-        public string Wantemus { get; set; } = "no"; //yes or no
+    /// <summary>
+    /// If you like to receive Emulator shares from keys
+    /// (only if set to 1 if set to give emus on the f line from the server you are getting )
+    /// </summary>
+    public string Wantemus { get; set; } = "no"; //yes or no
 
-        /// <summary>
-        /// Limiting what to get from that particular server
-        /// </summary>
-        public List<Providers> Providers { get; set; }
+    /// <summary>
+    /// Limiting what to get from that particular server
+    /// </summary>
+    public List<Providers> Providers { get; set; }
 
-        /// <summary>
-        /// Line comment
-        /// </summary>
-        public string Cccversion { get; set; } //ex: # v2.0.11-2892
-    }
+    /// <summary>
+    /// Line comment
+    /// </summary>
+    public string Cccversion { get; set; } //ex: # v2.0.11-2892
 }
 
 /*

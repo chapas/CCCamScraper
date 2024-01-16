@@ -9,84 +9,83 @@ using Quartz.AspNetCore;
 using Serilog;
 using Serilog.Debugging;
 
-namespace CCCamScraper
+namespace CCCamScraper;
+
+public class Program
 {
-    public class Program
+    private static IConfigurationRoot _configuration;
+
+    public static void Main(string[] args)
     {
-        private static IConfigurationRoot _configuration;
+        var services = new ServiceCollection();
 
-        public static void Main(string[] args)
+        try
         {
-            var services = new ServiceCollection();
+            SelfLog.Enable(Console.Error);
 
-            try
-            {
-                SelfLog.Enable(Console.Error);
+            Thread.CurrentThread.Name = "CCCamScraper main thread";
 
-                Thread.CurrentThread.Name = "CCCamScraper main thread";
+            _configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", false, true)
+                .AddEnvironmentVariables()
+                .Build();
 
-                _configuration = new ConfigurationBuilder()
-                    .SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile("appsettings.json", false, true)
-                    .AddEnvironmentVariables()
-                    .Build();
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(_configuration)
+                .Enrich.FromLogContext()
+                .CreateLogger();
 
-                Log.Logger = new LoggerConfiguration()
-                    .ReadFrom.Configuration(_configuration)
-                    .Enrich.FromLogContext()
-                    .CreateLogger();
+            if (args.Length > 0)
+                Log.Information("Args: {Args}", args);
 
-                if (args.Length > 0)
-                    Log.Information("Args: {Args}", args);
+            Log.Information("Starting CCCamScraper...");
+            var builder = CreateHostBuilder(args).Build();
 
-                Log.Information("Starting CCCamScraper...");
-                var builder = CreateHostBuilder(args).Build();
-
-                Log.Information("Waiting for schedule to start work.");
-                builder.Run();
-            }
-            catch (Exception exception)
-            {
-                Log.Fatal(exception, "CCCamScraper terminated unexpectedly");
-            }
-            finally
-            {
-                Log.CloseAndFlush();
-            }
+            Log.Information("Waiting for schedule to start work.");
+            builder.Run();
         }
-
-        public static IHostBuilder CreateHostBuilder(string[] args)
+        catch (Exception exception)
         {
-            return Host.CreateDefaultBuilder(args)
-                .UseSerilog()
-                .ConfigureServices((hostContext, services) =>
+            Log.Fatal(exception, "CCCamScraper terminated unexpectedly");
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+        }
+    }
+
+    public static IHostBuilder CreateHostBuilder(string[] args)
+    {
+        return Host.CreateDefaultBuilder(args)
+            .UseSerilog()
+            .ConfigureServices((hostContext, services) =>
+            {
+                services.AddOptions<CCCamScraperOptions>()
+                    .BindConfiguration("OsCam")
+                    .ValidateDataAnnotations()
+                    .ValidateOnStart();
+
+                services.AddOptions<QuartzJobsOptions>()
+                    .BindConfiguration("QuartzJobs")
+                    .ValidateDataAnnotations()
+                    .ValidateOnStart();
+
+                var serviceProvider = services.BuildServiceProvider();
+
+                //// Resolve the services from the service provider
+                var quartzJobsOptions = serviceProvider.GetRequiredService<IOptionsMonitor<QuartzJobsOptions>>();
+
+                services.AddQuartz(q =>
                 {
-                    services.AddOptions<CCCamScraperOptions>()
-                        .BindConfiguration("OsCam")
-                        .ValidateDataAnnotations()
-                        .ValidateOnStart();
+                    q.UseMicrosoftDependencyInjectionJobFactory();
 
-                    services.AddOptions<QuartzJobsOptions>()
-                        .BindConfiguration("QuartzJobs")
-                        .ValidateDataAnnotations()
-                        .ValidateOnStart();
-
-                    var serviceProvider = services.BuildServiceProvider();
-
-                    //// Resolve the services from the service provider
-                    var quartzJobsOptions = serviceProvider.GetRequiredService<IOptionsMonitor<QuartzJobsOptions>>();
-
-                    services.AddQuartz(q =>
-                    {
-                        q.UseMicrosoftDependencyInjectionJobFactory();
-
-                        // Register the job, loading the schedule from configuration
-                        q.AddQuartzJobsAndTriggers(_configuration, quartzJobsOptions);
-                    });
-
-                    services.AddQuartzHostedService(options => { options.WaitForJobsToComplete = true; });
-                    services.AddQuartzServer(options => { options.WaitForJobsToComplete = true; });
+                    // Register the job, loading the schedule from configuration
+                    q.AddQuartzJobsAndTriggers(_configuration, quartzJobsOptions);
                 });
-        }
+
+                services.AddQuartzHostedService(options => { options.WaitForJobsToComplete = true; });
+                services.AddQuartzServer(options => { options.WaitForJobsToComplete = true; });
+            });
     }
 }
