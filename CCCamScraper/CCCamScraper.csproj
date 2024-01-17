@@ -7,7 +7,8 @@
     <UserSecretsId>dfce778d-3821-42b2-af1a-b52233cd6dac</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
-    <Platforms>AnyCPU;ARM32</Platforms>
+    <Platforms>AnyCPU;ARM64</Platforms>
+	<PublishTrimmed>true</PublishTrimmed>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="config\**" />
@@ -39,7 +40,6 @@
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.Async" Version="1.5.0" />
-
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
   </ItemGroup>
   <ItemGroup>
