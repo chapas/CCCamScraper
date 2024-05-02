@@ -15,6 +15,7 @@ public class OsCamReader // https://www.faalsoft.com/knowledgebase/448/oscamserv
     public string User { get; set; } = "";
     public string Password { get; set; } = "";
     public string Group { get; set; } = "1";
+    public string AUDisabled { get; set; } = "1";
     public string InactivityTimeout { get; set; } = "30";
     public string ReconnectTimeout { get; set; } = "30";
     public string LbWeight { get; set; } = "100";
@@ -42,6 +43,7 @@ public class OsCamReader // https://www.faalsoft.com/knowledgebase/448/oscamserv
         sb.AppendLine("group                    = " + Group);
         sb.AppendLine("inactivitytimeout        = " + InactivityTimeout);
         sb.AppendLine("reconnecttimeout         = " + ReconnectTimeout);
+        sb.AppendLine("audisabled               = " + AUDisabled);
         sb.AppendLine("lb_weight                = " + LbWeight);
         if (!string.IsNullOrEmpty(Cccversion))
             sb.AppendLine("cccversion               = " + Cccversion);

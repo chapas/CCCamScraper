@@ -11,8 +11,7 @@ public class RemoveReadersWithUnwantedStatusJob : IJob
 {
     private readonly IOptionsMonitor<CCCamScraperOptions> _cccamScraperOptions;
 
-    public RemoveReadersWithUnwantedStatusJob(
-        IOptionsMonitor<CCCamScraperOptions> cccamScraperOptions)
+    public RemoveReadersWithUnwantedStatusJob(IOptionsMonitor<CCCamScraperOptions> cccamScraperOptions)
     {
         _cccamScraperOptions = cccamScraperOptions;
     }

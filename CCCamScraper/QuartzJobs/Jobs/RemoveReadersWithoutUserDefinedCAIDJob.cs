@@ -19,7 +19,7 @@ public class RemoveReadersWithoutUserDefinedCaidJob : IJob
 
     public async Task Execute(IJobExecutionContext context)
     {
-        if (_cccamScraperOptions.CurrentValue.CaiDs.Length == 0)
+        if (_cccamScraperOptions.CurrentValue.CaiDs == null || _cccamScraperOptions.CurrentValue.CaiDs.Length == 0)
         {
             Log.Information("No user CAID's defined, skipping Job");
             return;
