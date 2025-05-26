@@ -19,4 +19,7 @@ public class CcCamScraperJobOption
     public string Schedule { get; set; }
     [Required] 
     public bool RunOnceAtStartUp { get; set; } = false;
+    [Required]
+    public bool Enabled { get; set; } = true;
+
 }

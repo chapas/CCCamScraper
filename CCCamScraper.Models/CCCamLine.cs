@@ -33,14 +33,22 @@ public class CcCamLine
     public string Wantemus { get; set; } = "no"; //yes or no
 
     /// <summary>
-    /// Limiting what to get from that particular server
+    /// Gets or sets the providers
     /// </summary>
+    /// <remarks>Limits the providers that you want to get from the server</remarks>
     public List<Providers> Providers { get; set; }
 
     /// <summary>
-    /// Line comment
+    /// Gets or sets the CCCam version.
     /// </summary>
-    public string Cccversion { get; set; } //ex: # v2.0.11-2892
+    /// <remarks>ex: # v2.0.11-2892</remarks>
+    public string Cccversion { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this <see cref="CcCamLine"/> is auto update.
+    /// </summary>
+    /// <reamrks>Autoupdates the Emm back to the card</reamrks>
+    public bool AutoUpdate { get; set; }
 }
 
 /*

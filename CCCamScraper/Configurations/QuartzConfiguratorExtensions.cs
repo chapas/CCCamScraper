@@ -17,6 +17,9 @@ public static class QuartzConfiguratorExtensions
             if (quartzJob == null)
                 throw new Exception($"No Quartz.NET Cron schedule found for job in configuration named {quartzJob.Name}");
 
+            if (!quartzJob.Enabled)
+                continue;
+
             var jobKey = new JobKey(quartzJob.Name);
             var jobType = Type.GetType($"CCCamScraper.QuartzJobs.Jobs.{quartzJob.Name}") ?? typeof(ScrapeJob);
 

@@ -48,8 +48,6 @@ public class OsCamReader // https://www.faalsoft.com/knowledgebase/448/oscamserv
         if (!string.IsNullOrEmpty(Cccversion))
             sb.AppendLine("cccversion               = " + Cccversion);
         sb.AppendLine("cccmaxhops               = " + Cccmaxhops);
-        if (!string.IsNullOrEmpty(Cccwantemu))
-            sb.AppendLine("cccwantemu               = " + Cccwantemu);
         sb.AppendLine("ccckeepalive             = " + Ccckeepalive);
         if (!string.IsNullOrEmpty(Caid))
             sb.AppendLine("caid                     = " + Caid);

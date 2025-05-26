@@ -31,7 +31,7 @@ crontab -l (just to make sure)
 ### Job schedule order
  - Scrape
  - Restart oscam (to reload readers)(not supported by util, done externaly) 
- - Remove undesired CAID's (reads from oscam reder details page)
+ - Remove undesired CAID's (reads from oscam reader details page)
 
 ### Todo
  - Improve code
