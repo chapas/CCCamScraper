@@ -1,25 +1,18 @@
-#See https://aka.ms/containerfastmode to understand how Visual Studio uses this Dockerfile to build your images for faster debugging.
-
-FROM mcr.microsoft.com/dotnet/aspnet:8.0.1 AS base
-WORKDIR /app
-
-FROM mcr.microsoft.com/dotnet/sdk:8.0.101 AS build
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build
 WORKDIR /src
-COPY ["CCCamScraper/CCCamScraper.csproj", "CCCamScraper/"]
-#COPY ["CCCamScraper.Models/CCCamScraper.Models.csproj", "CCCamScraper.Models/"]
-RUN dotnet restore "/src/CCCamScraper/CCCamScraper.sln"
 COPY . .
-WORKDIR "/src/CCCamScraper"
-#RUN dotnet build "src/CCCamScraper.Models/CCCamScraper.Models.csproj" --runtime amd64 -c Release -o /app/build
-RUN dotnet build "src/CCCamScraper/CCCamScraper.csproj" --runtime amd64 -c Release -o /app/build
+RUN dotnet publish "CCCamScraper/CCCamScraper.csproj" -c Release -r linux-musl-arm64 -o /app --self-contained false
 
-FROM build AS publish
-RUN dotnet publish "CCCamScraper.sln" --runtime amd64 -c Release -o /app/publish
-
-FROM base AS final
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine
 WORKDIR /app
-VOLUME /oscam
-COPY --from=publish /app/publish .
-#RUN apt-get update && apt-get update -y
-#RUN apt-get install nano -y
+
+# INSTALL NANO
+RUN apk update && apk add --no-cache nano
+
+COPY --from=build /app .
+
+# Ensure we run as root so nano can edit mapped volumes
+USER root
 ENTRYPOINT ["dotnet", "CCCamScraper.dll"]

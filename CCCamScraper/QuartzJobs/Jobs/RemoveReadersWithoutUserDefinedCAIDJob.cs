@@ -1,8 +1,8 @@
-﻿using Quartz;
-using Serilog;
-using CCCamScraper.Configurations;
+﻿using CCCamScraper.Configurations;
 using CCCamScraper.Handlers;
 using Microsoft.Extensions.Options;
+using Quartz;
+using Serilog;
 
 namespace CCCamScraper.QuartzJobs.Jobs;
 
@@ -28,9 +28,11 @@ public class RemoveReadersWithoutUserDefinedCaidJob : IJob
         Log.Information("Started removing readers from oscam.server file without users CAID's");
 
         IHandler handler = new GetCurrentReadersOnOscamServerFileHandler(_cccamScraperOptions);
+
         handler
             .SetNext(new RemoveReadersWithoutUserDefinedCAIDHandler(_cccamScraperOptions))
-            .SetNext(new WriteOsCamReadersToFileHandler(_cccamScraperOptions));
+            .SetNext(new WriteOsCamReadersToFileHandler(_cccamScraperOptions))
+            .SetNext(new RestartOsCamJobHandler(_cccamScraperOptions));
 
         await handler.Handle(context);
     }

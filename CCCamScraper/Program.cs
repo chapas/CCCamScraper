@@ -1,15 +1,13 @@
-﻿
+﻿namespace CCCamScraper;
+
 using CCCamScraper.Configurations;
+using CCCamScraper.QuartzJobs.Jobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using Quartz;
-using Quartz.AspNetCore;
 using Serilog;
 using Serilog.Debugging;
-
-namespace CCCamScraper;
 
 public class Program
 {
@@ -17,17 +15,12 @@ public class Program
 
     public static void Main(string[] args)
     {
-        var services = new ServiceCollection();
-
         try
         {
             SelfLog.Enable(Console.Error);
-
             Thread.CurrentThread.Name = "CCCamScraper main thread";
 
             _configuration = new ConfigurationBuilder()
-                //.SetBasePath(Directory.GetCurrentDirectory())
-                //.AddJsonFile("appsettings.json", true, true)
                 .AddJsonFile("appsettings.json", false, true)
                 .AddEnvironmentVariables()
                 .Build();
@@ -41,10 +34,10 @@ public class Program
                 Log.Information("Args: {Args}", args);
 
             Log.Information("Starting CCCamScraper...");
-            var builder = CreateHostBuilder(args).Build();
+            var host = CreateHostBuilder(args).Build();
 
-            Log.Information("Waiting for schedule to start work.");
-            builder.Run();
+            Log.Information("Service initialized. Waiting for schedule to start work.");
+            host.Run();
         }
         catch (Exception exception)
         {
@@ -62,6 +55,7 @@ public class Program
             .UseSerilog()
             .ConfigureServices((hostContext, services) =>
             {
+                // 1. Setup Options
                 services.AddOptions<CCCamScraperOptions>()
                     .BindConfiguration("OsCam")
                     .ValidateDataAnnotations()
@@ -72,21 +66,67 @@ public class Program
                     .ValidateDataAnnotations()
                     .ValidateOnStart();
 
-                var serviceProvider = services.BuildServiceProvider();
-
-                //// Resolve the services from the service provider
-                var quartzJobsOptions = serviceProvider.GetRequiredService<IOptionsMonitor<QuartzJobsOptions>>();
-
+                // 2. Quartz Configuration
                 services.AddQuartz(q =>
                 {
-                    q.UseMicrosoftDependencyInjectionJobFactory();
+                    var quartzOptions = _configuration.GetSection("QuartzJobs").Get<QuartzJobsOptions>();
 
-                    // Register the job, loading the schedule from configuration
-                    q.AddQuartzJobsAndTriggers(_configuration, quartzJobsOptions);
+                    if (quartzOptions?.CcCamScraperJobs != null)
+                    {
+                        var enabledJobs = quartzOptions.CcCamScraperJobs.Where(j => j.Enabled).ToList();
+
+                        foreach (var jobOption in enabledJobs)
+                        {
+                            var jobKey = new JobKey(jobOption.Name);
+                            Type? jobType = null;
+
+                            // 1. Try to find a specific class matching the Name (e.g., RemoveReadersWithECMNotOKJob)
+                            jobType = AppDomain.CurrentDomain.GetAssemblies()
+                                .SelectMany(a => a.GetTypes())
+                                .FirstOrDefault(t => t.Name.Equals(jobOption.Name, StringComparison.OrdinalIgnoreCase)
+                                                     && typeof(IJob).IsAssignableFrom(t));
+
+                            if (jobType == null)
+                            {
+                                Log.Information("No specific class found for {JobName}, defaulting to ScrapeJob.", jobOption.Name);
+                                jobType = typeof(ScrapeJob);
+                            }
+                            else
+                            {
+                                Log.Information("Specific job class found: {JobType}", jobType.Name);
+                            }
+
+                            q.AddJob(jobType, jobKey, (Action<IJobConfigurator>?)null);
+
+                            q.AddTrigger(opts =>
+                            {
+                                opts.ForJob(jobKey).WithIdentity(jobOption.Name + "-cron-trigger");
+
+                                if (int.TryParse(jobOption.Schedule, out int minutes))
+                                {
+                                    opts.WithSimpleSchedule(x => x.WithIntervalInMinutes(minutes).RepeatForever());
+                                }
+                                else
+                                {
+                                    opts.WithCronSchedule(jobOption.Schedule);
+                                }
+                            });
+
+                            if (jobOption.RunOnceAtStartUp)
+                            {
+                                q.AddTrigger(opts => opts
+                                    .ForJob(jobKey)
+                                    .WithIdentity(jobOption.Name + "-startup-trigger")
+                                    .StartNow());
+                            }
+                        }
+                    }
                 });
 
-                services.AddQuartzHostedService(options => { options.WaitForJobsToComplete = true; });
-                services.AddQuartzServer(options => { options.WaitForJobsToComplete = true; });
+                services.AddQuartzHostedService(options =>
+                {
+                    options.WaitForJobsToComplete = true;
+                });
             });
     }
 }

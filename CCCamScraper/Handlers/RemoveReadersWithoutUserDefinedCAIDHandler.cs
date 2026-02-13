@@ -1,9 +1,9 @@
 ﻿using CCCamScraper.Configurations;
 using CCCamScraper.Models;
-using System.Xml.Serialization;
 using Microsoft.Extensions.Options;
 using Quartz;
 using Serilog;
+using System.Xml.Serialization;
 
 namespace CCCamScraper.Handlers;
 
@@ -34,7 +34,12 @@ public class RemoveReadersWithoutUserDefinedCAIDHandler : IHandler
             oscamLinesFromStatusPage,
             _cccamScraperOptions.CurrentValue);
 
-        return _nextHandler.Handle(context);
+        if (_nextHandler != null)
+        {
+            return await _nextHandler.Handle(context).ConfigureAwait(false);
+        }
+
+        return context.Result ?? new object();
     }
 
     public async Task<List<OsCamReader>> RemoveReadersThatDontHaveTheCaid(
@@ -99,7 +104,7 @@ public class RemoveReadersWithoutUserDefinedCAIDHandler : IHandler
         catch (Exception ex)
         {
             Log.Error(ex, $"Didn't had access to the oscam reader details page: {osCamReaderPageUrl}");
-            return true; // this is a bit special, if it throws we don't care and continue to the next line
+            return true;
         }
     }
 }

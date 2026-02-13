@@ -5,8 +5,8 @@ using Microsoft.Extensions.Options;
 using Quartz;
 using Serilog;
 using System.Globalization;
+using System.Net.Http.Json;
 using System.Text.RegularExpressions;
-
 
 namespace CCCamScraper.Handlers;
 
@@ -38,46 +38,124 @@ public class ScrapeCLinesFromUrlHandler : IHandler
         osCamReaders.UnionWith(ParseCLines(scrappedLines, context.JobDetail.Key.Name));
         context.Result = osCamReaders.ToList();
 
-        return _nextHandler.Handle(context);
+        if (_nextHandler != null)
+        {
+            return await _nextHandler.Handle(context).ConfigureAwait(false);
+        }
+
+        return context.Result ?? new object();
     }
 
     private async Task<HashSet<string>> ScrapeCLinesFromUrl(string urlToScrape)
     {
         var urlToScrapeFrom = UrlStringReplacement(urlToScrape);
+        string htmlContent = string.Empty;
+        bool useFlareSolverr = false;
 
-        var req = new HttpClient();
-        req.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0");
+        string flareSolverrProxy = _ccCamScraperOptions.CurrentValue.FlareSolverrUrl;
 
-        var config = Configuration.Default.With(req).WithDefaultLoader().WithDefaultCookies();
-        var document = await BrowsingContext.New(config).OpenAsync(urlToScrapeFrom);
+        Log.Information("Using FlareSolverr at: {Url}", flareSolverrProxy);
 
-        var uniqueCStrings = document.All[0].InnerHtml
-            .Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.TrimEntries)
-            .Where(line => line.Contains(@"c: ", StringComparison.OrdinalIgnoreCase));
+        using var client = new HttpClient();
+        client.Timeout = TimeSpan.FromSeconds(90);
 
-        var set = uniqueCStrings.SelectMany(input => cccamRegExPattern.Matches(input))
-            .Select(match => match.Value)
-            .ToHashSet();
+        try
+        {
+            var checkResponse = await client.GetAsync(flareSolverrProxy.Replace("/v1", ""));
+            if (checkResponse.IsSuccessStatusCode)
+            {
+                useFlareSolverr = true;
+                Log.Information("FlareSolverr is ONLINE at {Url}. Using proxy for {Target}", flareSolverrProxy, urlToScrapeFrom);
+            }
+        }
+        catch
+        {
+            Log.Warning("FlareSolverr is OFFLINE at {Url}. Falling back to regular request.", flareSolverrProxy);
+        }
 
-        var result = SplitLinesIntoHashSet(set);
+        try
+        {
+            if (useFlareSolverr)
+            {
+                var requestPayload = new { cmd = "request.get", url = urlToScrapeFrom, maxTimeout = 60000 };
+                var response = await client.PostAsJsonAsync(flareSolverrProxy, requestPayload);
 
-        Log.Information($"Scraped {result.Count} clines from  {urlToScrapeFrom} ");
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadFromJsonAsync<FlareSolverrResponse>();
+                    htmlContent = json?.Solution?.Response ?? string.Empty;
+                }
+            }
+            else
+            {
+                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0");
+                htmlContent = await client.GetStringAsync(urlToScrapeFrom);
+            }
+        }
+        catch
+        {
+            Log.Error("Failed to retrieve content from {Url}", urlToScrapeFrom);
+        }
 
-        return result;
+        if (string.IsNullOrEmpty(htmlContent)) return new HashSet<string>();
+
+        return await ParseRawHtml(htmlContent);
+    }
+
+    // Helper classes for FlareSolverr JSON response
+    public record FlareSolverrResponse(string Status, string Message, FlareSolverrSolution Solution);
+    public record FlareSolverrSolution(string Response, int Status, string Url);
+
+    private async Task<HashSet<string>> ParseRawHtml(string html)
+    {
+        try
+        {
+            var context = BrowsingContext.New(AngleSharp.Configuration.Default);
+            var document = await context.OpenAsync(req => req.Content(html));
+            var sourceText = document.Body?.InnerHtml ?? string.Empty;
+
+            if (sourceText.Contains("checking your browser", StringComparison.OrdinalIgnoreCase))
+            {
+                Log.Error("Direct request failed: Blocked by Cloudflare/DDOS-Guard. FlareSolverr is required for this site.");
+                return new HashSet<string>();
+            }
+
+            var lines = sourceText.Split(new[] { "\r\n", "\r", "\n", "<br>", "<br />" }, StringSplitOptions.TrimEntries);
+            var cStrings = new HashSet<string>();
+
+            foreach (var line in lines)
+            {
+                if (line.Contains("c: ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var matches = cccamRegExPattern.Matches(line);
+                    foreach (Match match in matches) if (match.Success) cStrings.Add(match.Value);
+                }
+            }
+            return SplitLinesIntoHashSet(cStrings);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Critical parsing error in ParseRawHtml.");
+            return new HashSet<string>();
+        }
     }
 
     private static string UrlStringReplacement(string url)
     {
-        if (!(url.Contains('<') & url.Contains('>')))
-            return url;
+        if (string.IsNullOrEmpty(url))
+        {
+            Log.Warning("UrlStringReplacement received a null URL. Skipping replacement.");
+            return string.Empty;
+        }
 
-        var day = DateTime.Today.AddDays(-1).Day.ToString("00", CultureInfo.InvariantCulture);
+        var day = DateTime.Today.Day.ToString("00", CultureInfo.InvariantCulture);
         var month = DateTime.Today.Month.ToString("00", CultureInfo.InvariantCulture);
         var year = DateTime.Today.Year.ToString("0000", CultureInfo.InvariantCulture);
 
-        url = url.Replace("<yyyy>", year);
-        url = url.Replace("<mm>", month);
-        url = url.Replace("<dd>", day);
+        // Perform case-insensitive replacements
+        url = url.Replace("<yyyy>", year, StringComparison.OrdinalIgnoreCase);
+        url = url.Replace("<mm>", month, StringComparison.OrdinalIgnoreCase);
+        url = url.Replace("<dd>", day, StringComparison.OrdinalIgnoreCase);
 
         return url;
     }
@@ -96,9 +174,18 @@ public class ScrapeCLinesFromUrlHandler : IHandler
             Password = cl.Password,
             Label = cl.Hostname,
             Cccversion = cl.Cccversion,
-            Cccwantemu = cl.Wantemus,
-            Description = "0;0;0;0;" + cl.Username,
             Caid = string.Join(",", _ccCamScraperOptions.CurrentValue.CaiDs),
+            Description = new OsCamReaderDescription
+            {
+                AccumulatedError = 0,
+                AccumulatedOff = 0,
+                AccumulatedUnknown = 0,
+                LbValueReader = 0,
+                Username = cl.Username,
+                ECMOK = 0,
+                ECMNOK = 0,
+                ECMTOUT = 0
+            },
         }).ToHashSet();
 
         Log.Information($"Parsed {readers.Count} C lines from a total of {cLines.Count} found on {url}");
@@ -157,8 +244,6 @@ public class OsCamReaderComparer : IEqualityComparer<OsCamReader>
 
     public int GetHashCode(OsCamReader obj)
     {
-        // Return a hash code based on the values you're comparing in the Equals method.
-        // For example, if you're comparing based on the Label property:
         return obj?.Label?.GetHashCode() ?? 0;
     }
 }

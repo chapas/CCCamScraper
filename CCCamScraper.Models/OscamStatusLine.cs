@@ -20,5 +20,5 @@ public class OscamUiStatusLine
     /// </summary>
     public string Description { get; set; }
 
-    public OsCamReaderDescription OsCamReaderDescription => new OsCamReaderDescription(Description);
+    public OsCamReaderDescription OsCamReaderDescription => new();
 }

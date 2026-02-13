@@ -24,6 +24,11 @@ public class GetCurrentReadersOnOscamServerFileHandler : IHandler
     {
         context.Result = await ScraperJobOperations.GetListWithCurrentReadersOnOsCamServerFile(_cccamScraperOptions.CurrentValue.OscamServerPath).ConfigureAwait(false);
 
-        return _nextHandler.Handle(context);
+        if (_nextHandler != null)
+        {
+            return await _nextHandler.Handle(context).ConfigureAwait(false);
+        }
+
+        return context.Result ?? new object();
     }
 }

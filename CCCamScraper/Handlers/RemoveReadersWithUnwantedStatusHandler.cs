@@ -40,7 +40,12 @@ public class RemoveReadersWithUnwantedStatusHandler : IHandler
                 _cccamScraperOptions.CurrentValue)
             .ConfigureAwait(false);
 
-        return _nextHandler.Handle(context);
+        if (_nextHandler != null)
+        {
+            return await _nextHandler.Handle(context).ConfigureAwait(false);
+        }
+
+        return context.Result;
     }
 
     private Task<List<OsCamReader>> RemoveReadersThatHaveUnwantedStatus(

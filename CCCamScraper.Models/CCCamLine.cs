@@ -27,12 +27,6 @@ public class CcCamLine
     public string Password { get; set; }
 
     /// <summary>
-    /// If you like to receive Emulator shares from keys
-    /// (only if set to 1 if set to give emus on the f line from the server you are getting )
-    /// </summary>
-    public string Wantemus { get; set; } = "no"; //yes or no
-
-    /// <summary>
     /// Gets or sets the providers
     /// </summary>
     /// <remarks>Limits the providers that you want to get from the server</remarks>
